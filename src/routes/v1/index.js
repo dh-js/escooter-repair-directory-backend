@@ -30,7 +30,7 @@ router.get("/test-scrape", async (req, res, next) => {
     const results = await crawlerGooglePlaces(
       "electric scooter repair",
       "California",
-      "", //"Los Angeles",
+      "Los Angeles",
       5 // max results
     );
     logger.info(`Test scrape completed with ${results.length} results`);
