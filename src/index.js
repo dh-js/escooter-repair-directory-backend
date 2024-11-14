@@ -3,21 +3,20 @@ import config from "./config/config.js";
 import logger from "./utils/logger.js";
 import helmet from "helmet";
 import cors from "cors";
-// Add back the router import
 import v1Router from "./routes/v1/index.js";
 
+const filepath = "index.js";
 const app = express();
 
 app.use(express.json());
 app.use(helmet());
 app.use(cors());
 
-// Add back the router middleware
 app.use("/api/v1", v1Router);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  logger.error(err.stack);
+  logger.error("Unhandled error:", err, { filepath });
   res.status(err.status || 500).json({
     error: {
       message: err.message || "Internal server error",
@@ -30,10 +29,10 @@ app.use((err, req, res, next) => {
 const init = async () => {
   try {
     app.listen(config.port, () => {
-      logger.info(`Server running on port ${config.port}`);
+      logger.info(`Server running on port ${config.port}`, { filepath });
     });
   } catch (error) {
-    logger.error("Failed to initialize application:", error);
+    logger.error("Failed to initialize application:", error, { filepath });
     process.exit(1);
   }
 };

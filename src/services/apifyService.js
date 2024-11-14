@@ -2,6 +2,7 @@ import { ApifyClient } from "apify-client";
 import config from "../config/config.js";
 import logger from "../utils/logger.js";
 
+const filepath = "services/apifyService.js";
 const apifyClient = new ApifyClient({
   token: config.apify.apiToken,
 });
@@ -20,7 +21,8 @@ export const crawlerGooglePlaces = async (
     logger.info(
       `Starting shop data scraping for query: ${searchQuery} in ${
         city ? city + ", " : ""
-      }${state} (max results: ${maxResults})`
+      }${state} (max results: ${maxResults})`,
+      { filepath }
     );
 
     const run = await apifyClient.actor("compass/crawler-google-places").call({
@@ -43,7 +45,7 @@ export const crawlerGooglePlaces = async (
       deeperCityScrape: true, // true = more thorough search in populated areas (slower but more results)
 
       // Review Settings
-      maxReviews: 400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
+      maxReviews: 0, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
       //reviewsStartDate: "", // YYYY-MM-DD or ISO date or relative (e.g., "3 months")
       reviewsSort: "newest", // "newest", "mostRelevant", "highestRanking", "lowestRanking"
       //reviewsFilterString: "", // Only include reviews containing these keywords
@@ -72,17 +74,52 @@ export const crawlerGooglePlaces = async (
       //allPlacesNoSearchAction: "", // "all_places_no_search_ocr" or "all_places_no_search_mouse" to scrape all visible places
     });
 
+    // Collect run information
+    const runInfo = {
+      runId: run.id,
+      actorId: run.actId,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      status: run.status,
+      statusMessage: run.statusMessage,
+      defaultDatasetId: run.defaultDatasetId,
+      defaultKeyValueStoreId: run.defaultKeyValueStoreId,
+      defaultRequestQueueId: run.defaultRequestQueueId,
+      usage: {
+        computeUnits: run.usage.ACTOR_COMPUTE_UNITS,
+        datasetReads: run.usage.DATASET_READS,
+        datasetWrites: run.usage.DATASET_WRITES,
+        totalCostUsd: run.usageTotalUsd,
+      },
+      stats: {
+        runTimeSecs: run.stats.runTimeSecs,
+      },
+      searchParams: {
+        query: searchQuery,
+        state,
+        city,
+        maxResults,
+      },
+      resultsCount: 0, // Will be updated after getting items
+    };
+
     // Get dataset items
     const { items } = await apifyClient
       .dataset(run.defaultDatasetId)
       .listItems();
 
-    logger.info(`Scraped ${items.length} places`);
-    console.log(JSON.stringify(items, null, 2)); // Pretty print results for testing
+    // Update results count
+    runInfo.resultsCount = items.length;
 
-    return items;
+    logger.info(`Scraped ${items.length} places`, { filepath });
+
+    // Return both the items and run info
+    return {
+      items,
+      runInfo,
+    };
   } catch (error) {
-    logger.error("Error scraping shop data:", error);
+    logger.error("Error scraping shop data:", error, { filepath });
     throw error;
   }
 };

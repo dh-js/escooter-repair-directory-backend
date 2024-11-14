@@ -1,0 +1,42 @@
+Database Schema - Escooter Repair Store Directory
+
+Table: stores
+- id: UUID (primary key, auto-generated)
+- place_id: TEXT (unique, Google Maps identifier)
+- name: TEXT (required, store name)
+- category_name: TEXT (primary business category)
+- total_score: NUMERIC(2,1) (Google rating, e.g., 4.5)
+- reviews_count: INTEGER (number of reviews)
+- address: TEXT (full address)
+- street: TEXT
+- city: TEXT
+- state: TEXT
+- postal_code: TEXT
+- country_code: TEXT
+- latitude: NUMERIC (for location search)
+- longitude: NUMERIC (for location search)
+- phone: TEXT
+- website: TEXT
+- permanently_closed: BOOLEAN
+- temporarily_closed: BOOLEAN
+- opening_hours: JSONB (array of day/hours objects)
+- categories: TEXT[] (array of all business categories)
+- additional_info: JSONB (service options, accessibility, etc.)
+- questions_and_answers: JSONB (array of Q&A objects from Google)
+- reviews: JSONB (array of review objects from Google)
+- scraped_at: TIMESTAMP WITH TIME ZONE
+- last_updated: TIMESTAMP WITH TIME ZONE
+- escooter_repair_confirmed: BOOLEAN (AI determination)
+- repair_tier: INTEGER (1-3, repair service level)
+- ai_summary: TEXT (Claude's analysis)
+- confidence_score: NUMERIC(3,2) (AI confidence 0-1)
+
+Data Mapping Instructions:
+1. Use place_id as unique identifier for updates
+2. Store all timestamps in UTC
+3. Format opening_hours as array of objects: [{"day": "Monday", "hours": "9 AM to 5 PM"}]
+4. Format questions_and_answers as array of objects: [{"question": "", "answers": [], "askDate": "", "askedBy": {}}]
+5. Format reviews as array of objects containing review text and metadata
+6. Store categories as string array for easy searching
+7. Store additional_info as nested JSONB object with service options and amenities
+8. Initialize AI fields (escooter_repair_confirmed, repair_tier, ai_summary, confidence_score) as NULL until AI processing
