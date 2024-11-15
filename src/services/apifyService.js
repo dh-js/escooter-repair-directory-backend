@@ -13,6 +13,36 @@ const apifyClient = new ApifyClient({
  */
 const transformStoreData = (item) => {
   try {
+    // Add validation for required fields
+    const requiredFields = ["placeId"];
+    const missingRequired = requiredFields.filter((field) => !item[field]);
+
+    if (missingRequired.length > 0) {
+      throw new Error(`Missing required fields: ${missingRequired.join(", ")}`);
+    }
+
+    // Log warning for missing but expected fields
+    const expectedFields = ["title", "address", "location", "phone", "website"];
+    const missingExpected = expectedFields.filter((field) => !item[field]);
+
+    if (missingExpected.length > 0) {
+      logger.warn(`Missing expected fields for place ${item.placeId}`, {
+        filepath,
+        placeId: item.placeId,
+        missingFields: missingExpected,
+      });
+    }
+
+    // Validate location structure if present
+    if (item.location && (!item.location.lat || !item.location.lng)) {
+      logger.warn(`Invalid location structure`, {
+        filepath,
+        placeId: item.placeId,
+        location: item.location,
+        issue: "Missing or invalid lat/lng values",
+      });
+    }
+
     return {
       // Core Identifiers
       place_id: item.placeId,
@@ -74,10 +104,25 @@ const transformStoreData = (item) => {
       last_updated: new Date().toISOString(),
     };
   } catch (error) {
-    logger.error(`Error transforming store data for ${item?.placeId}:`, error, {
+    logger.error(`Data transformation error`, {
       filepath,
+      placeId: item?.placeId || "unknown",
+      error: error.message,
+      stack: error.stack,
+      rawData: item ? JSON.stringify(item).slice(0, 500) : "null", // Increased limit but still truncated
+      timestamp: new Date().toISOString(),
     });
-    throw error;
+
+    // Return a more detailed error record
+    return {
+      place_id: item?.placeId || "unknown",
+      name: item?.title || "unknown",
+      transformation_error: error.message,
+      error_timestamp: new Date().toISOString(),
+      scraped_at: new Date().toISOString(),
+      last_updated: new Date().toISOString(),
+      partial_data: true,
+    };
   }
 };
 
