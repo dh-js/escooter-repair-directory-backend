@@ -45,18 +45,18 @@ export const crawlerGooglePlaces = async (
       deeperCityScrape: true, // true = more thorough search in populated areas (slower but more results)
 
       // Review Settings
-      maxReviews: 0, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
+      maxReviews: 2, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
       //reviewsStartDate: "", // YYYY-MM-DD or ISO date or relative (e.g., "3 months")
       reviewsSort: "newest", // "newest", "mostRelevant", "highestRanking", "lowestRanking"
       //reviewsFilterString: "", // Only include reviews containing these keywords
-      scrapeReviewsPersonalData: false, // true = include reviewer details
+      scrapeReviewsPersonalData: true, // true = include reviewer details
 
       // Questions
       maxQuestions: 999, // 0 = first Q&A only, 999 = all questions
 
       // Location Settings
       countryCode: "us",
-      city: city, // Now using the city parameter
+      //city: city, // Now using the city parameter
       state: state, // Now using the state parameter
       //county: "", // US county name
       //postalCode: "", // Single postal code (use with country, not city)

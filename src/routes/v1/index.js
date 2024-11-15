@@ -42,8 +42,8 @@ router.get("/test-scrape", async (req, res, next) => {
     logger.info("Starting test scrape...", { filepath });
     const { items, runInfo } = await crawlerGooglePlaces(
       "electric scooter repair",
-      "California",
-      "Los Angeles",
+      "Florida",
+      "",
       5 // max results
     );
 

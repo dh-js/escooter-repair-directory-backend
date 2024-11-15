@@ -1,35 +1,88 @@
 Database Schema - Escooter Repair Store Directory
 
-Table: stores
+# SETUP INSTRUCTIONS
+# 1. Create required extensions for location search
+CREATE EXTENSION IF NOT EXISTS cube;
+CREATE EXTENSION IF NOT EXISTS earthdistance;
+
+# 2. Create the stores table (see fields below)
+
+# 3. Create location search index
+CREATE INDEX stores_location_idx ON stores USING gist (ll_to_earth(latitude, longitude));
+
+# LOCATION SEARCH EXAMPLES
+# Find stores within X miles of a lat/lng point:
+
+# Quick version (less accurate, faster):
+SELECT * FROM stores 
+WHERE earth_box(ll_to_earth($lat, $lng), $miles * 1609.34) @> ll_to_earth(latitude, longitude);
+
+# Precise version (more accurate, slower):
+SELECT * FROM stores 
+WHERE earth_box(ll_to_earth($lat, $lng), $miles * 1609.34) @> ll_to_earth(latitude, longitude)
+AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < $miles * 1609.34;
+
+[Core Identifiers]
 - id: UUID (primary key, auto-generated)
 - place_id: TEXT (unique, Google Maps identifier)
+- search_string: TEXT (search term used to find store)
+
+[Basic Store Information]
 - name: TEXT (required, store name)
+- subtitle: TEXT (secondary business name/description)
 - category_name: TEXT (primary business category)
-- total_score: NUMERIC(2,1) (Google rating, e.g., 4.5)
-- reviews_count: INTEGER (number of reviews)
+- categories: TEXT[] (array of all business categories)
+- website: TEXT
+- phone: TEXT
+- permanently_closed: BOOLEAN
+- temporarily_closed: BOOLEAN
+
+[Location Data]
 - address: TEXT (full address)
 - street: TEXT
 - city: TEXT
 - state: TEXT
 - postal_code: TEXT
 - country_code: TEXT
+- neighborhood: TEXT
+- located_in: TEXT (parent location/mall name)
+- plus_code: TEXT (Google Plus Code)
 - latitude: NUMERIC (for location search)
 - longitude: NUMERIC (for location search)
-- phone: TEXT
-- website: TEXT
-- permanently_closed: BOOLEAN
-- temporarily_closed: BOOLEAN
+
+[Operating Hours]
 - opening_hours: JSONB (array of day/hours objects)
-- categories: TEXT[] (array of all business categories)
+
+[Review & Rating Data]
+- total_score: NUMERIC(2,1) (Google rating, e.g., 4.5)
+- reviews_count: INTEGER (number of reviews)
+- reviews_distribution: JSONB (breakdown of 1-5 star counts)
+- reviews_tags: JSONB (keyword frequency in reviews)
+- reviews: JSONB (array of review objects from Google)
+- places_tags: TEXT[] (tags from Google Places)
+
+[Additional Context Data (for AI analysis)]
 - additional_info: JSONB (service options, accessibility, etc.)
 - questions_and_answers: JSONB (array of Q&A objects from Google)
-- reviews: JSONB (array of review objects from Google)
-- scraped_at: TIMESTAMP WITH TIME ZONE
-- last_updated: TIMESTAMP WITH TIME ZONE
+- owner_updates: JSONB (store owner posts/updates)
+- images_count: INTEGER
+- image_categories: TEXT[]
+- people_also_search: JSONB (related businesses)
+
+[AI Analysis Results]
 - escooter_repair_confirmed: BOOLEAN (AI determination)
 - repair_tier: INTEGER (1-3, repair service level)
+- service_tiers: JSONB (specific services offered)
 - ai_summary: TEXT (Claude's analysis)
 - confidence_score: NUMERIC(3,2) (AI confidence 0-1)
+
+[Verification & Maintenance]
+- verified_by_call: BOOLEAN
+- verified_date: TIMESTAMP WITH TIME ZONE
+- owner_verified: BOOLEAN
+- supported_brands: TEXT[]
+- scraped_at: TIMESTAMP WITH TIME ZONE
+- last_updated: TIMESTAMP WITH TIME ZONE
 
 Data Mapping Instructions:
 1. Use place_id as unique identifier for updates
@@ -37,6 +90,18 @@ Data Mapping Instructions:
 3. Format opening_hours as array of objects: [{"day": "Monday", "hours": "9 AM to 5 PM"}]
 4. Format questions_and_answers as array of objects: [{"question": "", "answers": [], "askDate": "", "askedBy": {}}]
 5. Format reviews as array of objects containing review text and metadata
-6. Store categories as string array for easy searching
-7. Store additional_info as nested JSONB object with service options and amenities
-8. Initialize AI fields (escooter_repair_confirmed, repair_tier, ai_summary, confidence_score) as NULL until AI processing
+6. Format reviews_distribution as object: {"oneStar": 0, "twoStar": 0, "threeStar": 0, "fourStar": 0, "fiveStar": 0}
+7. Format reviews_tags as array of objects: [{"title": "service", "count": 5}]
+8. Format owner_updates as array of objects: [{"text": "", "date": "", "imageUrl": ""}]
+9. Format people_also_search as array of objects: [{"title": "", "reviewsCount": 0, "totalScore": 0}]
+10. Store categories and image_categories as string arrays for easy searching
+11. Store additional_info as nested JSONB object with service options and amenities
+12. Store supported_brands as string array of manufacturer names
+13. Format service_tiers as object: {
+    "tire_repair": boolean,
+    "electrical_repair": boolean,
+    "physical_repair": boolean
+    }
+14. Store places_tags as string array from Google Places data
+15. Initialize AI fields (escooter_repair_confirmed, service_tiers, repair_tier, ai_summary, confidence_score) as NULL until AI processing
+16. Initialize verification fields (verified_by_call, verified_date, owner_verified) as FALSE/NULL until verified
