@@ -14,33 +14,18 @@ const apifyClient = new ApifyClient({
 const transformStoreData = (item) => {
   try {
     // Add validation for required fields
-    const requiredFields = ["placeId"];
+    const requiredFields = ["placeId", "title"];
     const missingRequired = requiredFields.filter((field) => !item[field]);
 
     if (missingRequired.length > 0) {
       throw new Error(`Missing required fields: ${missingRequired.join(", ")}`);
     }
 
-    // Log warning for missing but expected fields
-    const expectedFields = ["title", "address", "location", "phone", "website"];
-    const missingExpected = expectedFields.filter((field) => !item[field]);
-
-    if (missingExpected.length > 0) {
-      logger.warn(`Missing expected fields for place ${item.placeId}`, {
-        filepath,
-        placeId: item.placeId,
-        missingFields: missingExpected,
-      });
-    }
-
-    // Validate location structure if present
+    // Validate location.lat and location.lng exist
     if (item.location && (!item.location.lat || !item.location.lng)) {
-      logger.warn(`Invalid location structure`, {
-        filepath,
-        placeId: item.placeId,
-        location: item.location,
-        issue: "Missing or invalid lat/lng values",
-      });
+      throw new Error(
+        `Missing required latitude or longitude fields: ${item.location}`
+      );
     }
 
     return {
@@ -88,16 +73,7 @@ const transformStoreData = (item) => {
       additional_info: item.additionalInfo,
       questions_and_answers: item.questionsAndAnswers,
       owner_updates: item.ownerUpdates,
-      images_count: item.imagesCount,
-      image_categories: item.imageCategories,
       people_also_search: item.peopleAlsoSearch,
-
-      // Set default values for AI fields (will be updated later)
-      escooter_repair_confirmed: null,
-      repair_tier: null,
-      service_tiers: null,
-      ai_summary: null,
-      confidence_score: null,
 
       // Timestamps
       scraped_at: new Date().toISOString(),
@@ -114,42 +90,37 @@ const transformStoreData = (item) => {
     });
 
     // Return a more detailed error record
-    return {
-      place_id: item?.placeId || "unknown",
-      name: item?.title || "unknown",
-      transformation_error: error.message,
-      error_timestamp: new Date().toISOString(),
-      scraped_at: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
-      partial_data: true,
-    };
+    return null;
   }
 };
 
 export const crawlerGooglePlaces = async (
-  searchQuery,
+  searchQueries,
   state,
   city = "", // Make city explicitly optional with default empty string
   maxResults = 5 // Default to 5 for safety if not specified
 ) => {
   try {
     // Input validation
-    if (!searchQuery) throw new Error("Search query is required");
+    if (!searchQueries || !searchQueries.length)
+      throw new Error("Search queries are required");
     if (!state) throw new Error("State is required");
 
     logger.info(
-      `Starting shop data scraping for query: ${searchQuery} in ${
-        city ? city + ", " : ""
-      }${state} (max results: ${maxResults})`,
+      `Starting shop data scraping for queries: ${searchQueries.join(
+        ", "
+      )} in ${city ? city + ", " : ""}${state} (max results: ${maxResults})`,
       { filepath }
     );
 
     const run = await apifyClient
       .actor("compass/crawler-google-places")
-      .call(getGooglePlacesCrawlerConfig(searchQuery, state, city, maxResults));
+      .call(
+        getGooglePlacesCrawlerConfig(searchQueries, state, city, maxResults)
+      );
 
     // Collect run information
-    const runInfo = {
+    const runDetails = {
       runId: run.id,
       actorId: run.actId,
       status: run.status,
@@ -171,7 +142,7 @@ export const crawlerGooglePlaces = async (
         totalCostUsd: run.usageTotalUsd,
       },
       searchParams: {
-        query: searchQuery,
+        queries: searchQueries,
         state,
         city,
         maxResults,
@@ -185,17 +156,20 @@ export const crawlerGooglePlaces = async (
       .listItems();
 
     // Transform items into our schema format
-    const transformedItems = items.map(transformStoreData);
+    const stores = items
+      .map(transformStoreData)
+      .filter((store) => store !== null);
 
     // Update results count
-    runInfo.resultsCount = items.length;
+    runDetails.resultsCount = items.length;
 
     logger.info(`Scraped and transformed ${items.length} places`, { filepath });
 
-    // Return both the transformed items and run info
+    // Return both the transformed items, run info, and raw items in development
     return {
-      items: transformedItems,
-      runInfo,
+      stores,
+      runDetails,
+      rawItems: config.nodeEnv === "development" ? items : undefined,
     };
   } catch (error) {
     logger.error("Error scraping shop data:", error, { filepath });

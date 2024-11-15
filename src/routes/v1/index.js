@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { crawlerGooglePlaces } from "../../services/apifyService.js";
-import { writeApifyRunDetails } from "../../services/supabaseService.js";
+import {
+  writeApifyRunDetails,
+  writeStores,
+} from "../../services/supabaseService.js";
 import logger from "../../utils/logger.js";
+import config from "../../config/config.js";
 
 const filepath = "routes/v1/index.js";
 const router = Router();
@@ -10,52 +14,62 @@ router.get("/healthz", (req, res) => {
   res.status(200).json({ status: "OK" });
 });
 
-router.post("/run-scrape", async (req, res, next) => {
-  try {
-    const { searchQuery, state, city } = req.body;
-    logger.info(`Starting scrape for ${searchQuery} in ${city}, ${state}`, {
-      filepath,
-    });
-
-    const { items, runInfo } = await crawlerGooglePlaces(
-      searchQuery,
-      state,
-      city,
-      9999999 // max results unlimited
-    );
-
-    // Store the run details
-    await writeApifyRunDetails(runInfo);
-
-    logger.info(`Scrape completed successfully with ${items.length} results`, {
-      filepath,
-    });
-    res.json({ success: true, count: items.length });
-  } catch (error) {
-    logger.error("Scrape failed:", error, { filepath });
-    next(error);
-  }
-});
-
 router.get("/test-scrape", async (req, res, next) => {
   try {
     logger.info("Starting test scrape...", { filepath });
-    const { items, runInfo } = await crawlerGooglePlaces(
-      "electric scooter repair", // searchQuery
-      "California", // state
-      "", // city
-      5 // max results
+    const { stores, runDetails, rawItems } = await crawlerGooglePlaces(
+      ["electric scooter repair"],
+      "Florida",
+      "",
+      5
     );
 
-    // Store the run details
-    await writeApifyRunDetails(runInfo);
-
-    logger.info(`Test scrape completed with ${items.length} results`, {
+    // Store the run details and capture the result
+    const runResult = await writeApifyRunDetails(runDetails);
+    logger.info("Apify run details stored", {
       filepath,
+      runId: runResult.run_id,
     });
-    res.json({ items, runInfo });
+
+    // Store the scraped stores
+    const storeResults = await writeStores(stores);
+
+    logger.info(`Test scrape completed`, {
+      filepath,
+      scrapedCount: stores.length,
+      storedCount: storeResults.successful,
+      newStores: storeResults.newStores,
+      updatedStores: storeResults.updatedStores,
+      failedStores: storeResults.failed,
+    });
+
+    // Return different responses based on environment
+    if (config.nodeEnv === "development") {
+      res.json({
+        success: true,
+        storeResults,
+        runDetails,
+        comparison: stores.map((store, index) => ({
+          transformed: store,
+          original: rawItems[index],
+        })),
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "Scrape completed successfully",
+        summary: {
+          totalScraped: stores.length,
+          storedSuccessfully: storeResults.successful,
+          newStores: storeResults.newStores,
+          updatedStores: storeResults.updatedStores,
+          failed: storeResults.failed,
+        },
+      });
+    }
   } catch (error) {
     logger.error("Test scrape failed:", error, { filepath });
+    // Pass to error handling middleware
     next(error);
   }
 });

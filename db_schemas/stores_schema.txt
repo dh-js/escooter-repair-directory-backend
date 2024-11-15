@@ -71,8 +71,6 @@ AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < 
 - additional_info: JSONB (service options, accessibility, etc.)
 - questions_and_answers: JSONB (array of Q&A objects from Google)
 - owner_updates: JSONB (store owner posts/updates)
-- images_count: INTEGER
-- image_categories: TEXT[]
 - people_also_search: JSONB (related businesses)
 
 [AI Analysis Results]
@@ -100,7 +98,6 @@ Data Mapping Instructions:
 7. Format reviews_tags as array of objects: [{"title": "service", "count": 5}]
 8. Format owner_updates as array of objects: [{"text": "", "date": "", "imageUrl": ""}]
 9. Format people_also_search as array of objects: [{"title": "", "reviewsCount": 0, "totalScore": 0}]
-10. Store categories and image_categories as string arrays for easy searching
 11. Store additional_info as nested JSONB object with service options and amenities
 12. Store supported_brands as string array of manufacturer names
 13. Format service_tiers as object: {
@@ -171,13 +168,11 @@ CREATE TABLE stores (
     additional_info JSONB,
     questions_and_answers JSONB,
     owner_updates JSONB,
-    images_count INTEGER,
-    image_categories TEXT[],
     people_also_search JSONB,
 
     -- AI Analysis Results
     escooter_repair_confirmed BOOLEAN,
-    repair_tier INTEGER CHECK (repair_tier BETWEEN 1 AND 3),
+    repair_tier INTEGER,
     service_tiers JSONB,
     ai_summary TEXT,
     confidence_score NUMERIC(3,2) CHECK (confidence_score BETWEEN 0 AND 1),

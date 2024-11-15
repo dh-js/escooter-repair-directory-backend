@@ -1,12 +1,12 @@
 // Google Places Crawler Actor Configuration
 export const getGooglePlacesCrawlerConfig = (
-  searchQuery,
+  searchQueries,
   state,
   city,
   maxResults
 ) => ({
   // Search Parameters
-  searchStringsArray: [searchQuery], // Array of search terms
+  searchStringsArray: searchQueries, // Array of search terms
   //locationQuery: "", // Free text location (e.g., "New York, USA").Takes precedence over other location params
   maxCrawledPlacesPerSearch: maxResults, // Max results per search term. Use 9999999 for all available. <200 disables deeperCityScrape
 
@@ -24,7 +24,7 @@ export const getGooglePlacesCrawlerConfig = (
   deeperCityScrape: true, // true = more thorough search in populated areas (slower but more results)
 
   // Review Settings
-  maxReviews: 2, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
+  maxReviews: 400, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
   //reviewsStartDate: "", // YYYY-MM-DD or ISO date or relative (e.g., "3 months")
   reviewsSort: "newest", // "newest", "mostRelevant", "highestRanking", "lowestRanking"
   //reviewsFilterString: "", // Only include reviews containing these keywords
