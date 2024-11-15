@@ -7,8 +7,12 @@ CREATE EXTENSION IF NOT EXISTS earthdistance;
 
 # 2. Create the stores table (see fields below)
 
-# 3. Create location search index
+# 3. Create indexes for optimized searching
 CREATE INDEX stores_location_idx ON stores USING gist (ll_to_earth(latitude, longitude));
+CREATE INDEX stores_place_id_idx ON stores(place_id);
+CREATE INDEX stores_city_state_idx ON stores(city, state);
+CREATE INDEX stores_categories_idx ON stores USING gin(categories);
+CREATE INDEX stores_escooter_repair_confirmed_idx ON stores(escooter_repair_confirmed);
 
 # LOCATION SEARCH EXAMPLES
 # Find stores within X miles of a lat/lng point:
@@ -23,19 +27,21 @@ WHERE earth_box(ll_to_earth($lat, $lng), $miles * 1609.34) @> ll_to_earth(latitu
 AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < $miles * 1609.34;
 
 [Core Identifiers]
-- id: UUID (primary key, auto-generated)
+- id: UUID (primary key, auto-generated, DEFAULT gen_random_uuid())
 - place_id: TEXT (unique, Google Maps identifier)
 - search_string: TEXT (search term used to find store)
+- search_page_url: TEXT (Google Maps search results URL)
 
 [Basic Store Information]
 - name: TEXT (required, store name)
 - subtitle: TEXT (secondary business name/description)
+- description: TEXT (full business description)
 - category_name: TEXT (primary business category)
 - categories: TEXT[] (array of all business categories)
 - website: TEXT
 - phone: TEXT
-- permanently_closed: BOOLEAN
-- temporarily_closed: BOOLEAN
+- permanently_closed: BOOLEAN (DEFAULT FALSE)
+- temporarily_closed: BOOLEAN (DEFAULT FALSE)
 
 [Location Data]
 - address: TEXT (full address)
@@ -71,18 +77,18 @@ AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < 
 
 [AI Analysis Results]
 - escooter_repair_confirmed: BOOLEAN (AI determination)
-- repair_tier: INTEGER (1-3, repair service level)
+- repair_tier: INTEGER (1-3, repair service level, CHECK (repair_tier BETWEEN 1 AND 3))
 - service_tiers: JSONB (specific services offered)
 - ai_summary: TEXT (Claude's analysis)
-- confidence_score: NUMERIC(3,2) (AI confidence 0-1)
+- confidence_score: NUMERIC(3,2) (AI confidence 0-1, CHECK (confidence_score BETWEEN 0 AND 1))
 
 [Verification & Maintenance]
-- verified_by_call: BOOLEAN
+- verified_by_call: BOOLEAN (DEFAULT FALSE)
 - verified_date: TIMESTAMP WITH TIME ZONE
-- owner_verified: BOOLEAN
+- owner_verified: BOOLEAN (DEFAULT FALSE)
 - supported_brands: TEXT[]
-- scraped_at: TIMESTAMP WITH TIME ZONE
-- last_updated: TIMESTAMP WITH TIME ZONE
+- scraped_at: TIMESTAMP WITH TIME ZONE (DEFAULT NOW())
+- last_updated: TIMESTAMP WITH TIME ZONE (DEFAULT NOW())
 
 Data Mapping Instructions:
 1. Use place_id as unique identifier for updates
@@ -105,3 +111,94 @@ Data Mapping Instructions:
 14. Store places_tags as string array from Google Places data
 15. Initialize AI fields (escooter_repair_confirmed, service_tiers, repair_tier, ai_summary, confidence_score) as NULL until AI processing
 16. Initialize verification fields (verified_by_call, verified_date, owner_verified) as FALSE/NULL until verified
+
+# Table Constraints and Defaults Summary:
+- Primary key on id with auto-generation
+- Unique constraint on place_id
+- CHECK constraints on repair_tier and confidence_score
+- DEFAULT values for boolean fields and timestamps
+- Additional indexes for optimized querying
+
+QUERY FOR CREATING THE TABLE:
+-- Create required extensions (if not already created)
+CREATE EXTENSION IF NOT EXISTS cube;
+CREATE EXTENSION IF NOT EXISTS earthdistance;
+
+-- Create the stores table
+CREATE TABLE stores (
+    -- Core Identifiers
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    place_id TEXT UNIQUE NOT NULL,
+    search_string TEXT NOT NULL,
+    search_page_url TEXT,
+
+    -- Basic Store Information
+    name TEXT NOT NULL,
+    subtitle TEXT,
+    description TEXT,
+    category_name TEXT,
+    categories TEXT[],
+    website TEXT,
+    phone TEXT,
+    permanently_closed BOOLEAN DEFAULT FALSE,
+    temporarily_closed BOOLEAN DEFAULT FALSE,
+
+    -- Location Data
+    address TEXT,
+    street TEXT,
+    city TEXT,
+    state TEXT,
+    postal_code TEXT,
+    country_code TEXT,
+    neighborhood TEXT,
+    located_in TEXT,
+    plus_code TEXT,
+    latitude NUMERIC,
+    longitude NUMERIC,
+
+    -- Operating Hours
+    opening_hours JSONB,
+
+    -- Review & Rating Data
+    total_score NUMERIC(2,1),
+    reviews_count INTEGER,
+    reviews_distribution JSONB,
+    reviews_tags JSONB,
+    reviews JSONB,
+    places_tags TEXT[],
+
+    -- Additional Context Data
+    additional_info JSONB,
+    questions_and_answers JSONB,
+    owner_updates JSONB,
+    images_count INTEGER,
+    image_categories TEXT[],
+    people_also_search JSONB,
+
+    -- AI Analysis Results
+    escooter_repair_confirmed BOOLEAN,
+    repair_tier INTEGER CHECK (repair_tier BETWEEN 1 AND 3),
+    service_tiers JSONB,
+    ai_summary TEXT,
+    confidence_score NUMERIC(3,2) CHECK (confidence_score BETWEEN 0 AND 1),
+
+    -- Verification & Maintenance
+    verified_by_call BOOLEAN DEFAULT FALSE,
+    verified_date TIMESTAMPTZ,
+    owner_verified BOOLEAN DEFAULT FALSE,
+    supported_brands TEXT[],
+    scraped_at TIMESTAMPTZ DEFAULT NOW(),
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Add constraints
+    CONSTRAINT valid_repair_tier CHECK (repair_tier IS NULL OR (repair_tier >= 1 AND repair_tier <= 3))
+);
+
+-- Create location search index
+CREATE INDEX stores_location_idx ON stores USING gist (ll_to_earth(latitude, longitude));
+
+-- Create additional useful indexes
+CREATE INDEX stores_place_id_idx ON stores(place_id);
+CREATE INDEX stores_city_state_idx ON stores(city, state);
+CREATE INDEX stores_categories_idx ON stores USING gin(categories);
+CREATE INDEX stores_escooter_repair_confirmed_idx ON stores(escooter_repair_confirmed);
