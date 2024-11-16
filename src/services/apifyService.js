@@ -156,20 +156,30 @@ export const crawlerGooglePlaces = async (
       .listItems();
 
     // Transform items into our schema format
+    // Add counter for validation failures
+    let validationFailures = 0;
     const stores = items
-      .map(transformStoreData)
+      .map((item) => {
+        const result = transformStoreData(item);
+        if (result === null) validationFailures++;
+        return result;
+      })
       .filter((store) => store !== null);
 
     // Update results count
     runDetails.resultsCount = items.length;
 
-    logger.info(`Scraped and transformed ${items.length} places`, { filepath });
+    logger.info(`Scraped and transformed ${items.length} places`, {
+      filepath,
+      validationFailures,
+    });
 
     // Return both the transformed items, run info, and raw items in development
     return {
       stores,
       runDetails,
       rawItems: config.nodeEnv === "development" ? items : undefined,
+      validationFailures,
     };
   } catch (error) {
     logger.error("Error scraping shop data:", error, { filepath });

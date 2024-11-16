@@ -17,30 +17,55 @@ router.get("/healthz", (req, res) => {
 router.get("/test-scrape", async (req, res, next) => {
   try {
     logger.info("Starting test scrape...", { filepath });
-    const { stores, runDetails, rawItems } = await crawlerGooglePlaces(
-      ["electric scooter repair"],
-      "Florida",
-      "",
-      5
-    );
+    const { stores, runDetails, rawItems, validationFailures } =
+      await crawlerGooglePlaces(
+        [
+          "electric scooter repair",
+          "stand-up electric scooter",
+          "bicycle Repair",
+        ],
+        "Florida",
+        "Miami",
+        10
+      );
 
-    // Store the run details and capture the result
+    // Try to store the scraped stores
+    try {
+      const storeResults = await writeStores(stores);
+      runDetails.store_processing_results = {
+        ...storeResults,
+        validationFailures,
+      };
+    } catch (storeError) {
+      logger.error("Failed to write stores:", storeError, { filepath });
+      runDetails.store_processing_results = { error: storeError.message };
+    }
+
+    // Store the run details regardless of store operation success
     const runResult = await writeApifyRunDetails(runDetails);
     logger.info("Apify run details stored", {
       filepath,
       runId: runResult.run_id,
     });
 
-    // Store the scraped stores
-    const storeResults = await writeStores(stores);
+    // Modify the response based on whether store operation succeeded
+    const storeResults = runDetails.store_processing_results;
+    const success = !storeResults.error;
 
     logger.info(`Test scrape completed`, {
       filepath,
-      scrapedCount: stores.length,
-      storedCount: storeResults.successful,
-      newStores: storeResults.newStores,
-      updatedStores: storeResults.updatedStores,
-      failedStores: storeResults.failed,
+      success,
+      ...(success
+        ? {
+            scrapedCount: stores.length,
+            storedCount: storeResults.successful,
+            newStores: storeResults.newStores,
+            updatedStores: storeResults.updatedStores,
+            failedStores: storeResults.failed,
+          }
+        : {
+            error: storeResults.error,
+          }),
     });
 
     // Return different responses based on environment
@@ -64,6 +89,7 @@ router.get("/test-scrape", async (req, res, next) => {
           newStores: storeResults.newStores,
           updatedStores: storeResults.updatedStores,
           failed: storeResults.failed,
+          validationFailures: storeResults.validationFailures,
         },
       });
     }

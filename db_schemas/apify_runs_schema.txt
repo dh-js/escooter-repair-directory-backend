@@ -7,17 +7,18 @@ Table Name: apify_runs
 
 Column Definitions:
 ------------------
-id                  bigint (Primary Key, Auto-increment)
-created_at          timestamp with time zone (Auto-populated)
-search_params       jsonb (Search parameters used)
-results_count       integer (Number of results found)
-status              text (e.g., 'SUCCEEDED', 'FAILED')
-status_message      text (Contains completion message and map URL)
-usage               jsonb (Contains compute units, reads, writes, and cost)
-timing              jsonb (Contains all timing-related information)
-data_ids            jsonb (Contains all Apify data storage IDs)
-run_id              text (Apify's run identifier)
-actor_id            text (Apify's actor identifier)
+id                        bigint (Primary Key, Auto-increment)
+created_at                timestamp with time zone (Auto-populated)
+search_params             jsonb (Search parameters used)
+results_count            integer (Number of results found)
+status                    text (e.g., 'SUCCEEDED', 'FAILED')
+status_message           text (Contains completion message and map URL)
+usage                     jsonb (Contains compute units, reads, writes, and cost)
+timing                    jsonb (Contains all timing-related information)
+data_ids                 jsonb (Contains all Apify data storage IDs)
+run_id                   text (Apify's run identifier)
+actor_id                 text (Apify's actor identifier)
+store_processing_results jsonb (Results of processing and storing scraped data)
 
 SQL Creation Command:
 -------------------
@@ -32,7 +33,8 @@ create table apify_runs (
   timing jsonb not null,
   data_ids jsonb not null,
   run_id text not null,
-  actor_id text not null
+  actor_id text not null,
+  store_processing_results jsonb
 );
 
 Usage Notes:
@@ -65,10 +67,14 @@ Usage Notes:
      "city": "city name",
      "maxResults": number
    }
-7. All timestamps include timezone information
-
-Implementation:
---------------
-1. Execute the SQL creation command in Supabase's SQL editor
-2. The table will be automatically available via Supabase's API
-3. Use the supabaseService.js file to interact with this table
+7. store_processing_results JSONB field contains:
+   {
+     "totalProcessed": number,
+     "successful": number,
+     "failed": number,
+     "newStores": number,
+     "updatedStores": number,
+     "failedStores": array of { place_id, name },
+     "validationFailures": number
+   }
+8. All timestamps include timezone information

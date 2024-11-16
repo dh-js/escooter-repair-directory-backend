@@ -27,6 +27,7 @@ export const writeApifyRunDetails = async (runDetails) => {
         usage: runDetails.usage,
         search_params: runDetails.searchParams,
         results_count: runDetails.resultsCount,
+        store_processing_results: runDetails.store_processing_results,
       })
       .select();
 
