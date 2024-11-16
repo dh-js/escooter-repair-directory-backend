@@ -3,7 +3,6 @@ import winston from "winston";
 // Custom format that will be used for both file and console output
 // Creates logs in format: "2024-03-20 10:30:45 [info] : Message here {additional: 'metadata'}"
 const customFormat = winston.format.combine(
-  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.errors({ stack: true }), // Includes stack traces for errors
   winston.format.splat(), // Enables string interpolation
   // Add module/filename information
@@ -15,19 +14,15 @@ const customFormat = winston.format.combine(
     }
     return info;
   })(),
-  winston.format.printf(
-    ({ level, message, timestamp, filepath, ...metadata }) => {
-      // Remove filepath from metadata if it exists to avoid duplication
-      const { filepath: _, ...cleanMetadata } = metadata;
-      let msg = `${timestamp} [${level}]${
-        filepath ? ` [${filepath}]` : ""
-      } : ${message}`;
-      if (Object.keys(cleanMetadata).length > 0) {
-        msg += ` ${JSON.stringify(cleanMetadata)}`;
-      }
-      return msg;
+  winston.format.printf(({ level, message, filepath, ...metadata }) => {
+    // Remove filepath from metadata if it exists to avoid duplication
+    const { filepath: _, ...cleanMetadata } = metadata;
+    let msg = `[${level}]${filepath ? ` [${filepath}]` : ""} : ${message}`;
+    if (Object.keys(cleanMetadata).length > 0) {
+      msg += ` ${JSON.stringify(cleanMetadata)}`;
     }
-  )
+    return msg;
+  })
 );
 
 const logger = winston.createLogger({

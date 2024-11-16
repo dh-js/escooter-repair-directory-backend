@@ -143,11 +143,17 @@ export const writeStores = async (stores) => {
         continue;
       }
 
-      // Fix: Always process the batch as successful if there's no error
       if (!data) {
         // If no data returned but also no error, consider the batch successful
         results.successful.push(...batch);
-        results.newStores.push(...batch); // Since table was empty, these are new stores
+        // Correctly categorize stores based on existingPlaceIds
+        batch.forEach((store) => {
+          if (existingPlaceIds.has(store.place_id)) {
+            results.updatedStores.push(store);
+          } else {
+            results.newStores.push(store);
+          }
+        });
       } else {
         // Process returned data as before
         data.forEach((store) => {
