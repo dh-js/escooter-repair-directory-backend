@@ -26,11 +26,6 @@ export default {
   port: process.env.PORT || 3000,
   apify: {
     apiToken: process.env.APIFY_API_TOKEN,
-    searchQueries: [
-      "electric scooter repair",
-      "stand-up electric scooter",
-      "bicycle Repair",
-    ],
   },
   supabase: {
     url: process.env.SUPABASE_URL,
