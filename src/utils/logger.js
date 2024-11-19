@@ -28,7 +28,6 @@ const customFormat = winston.format.combine(
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info", // Default to 'info' if not specified
   format: customFormat,
-  defaultMeta: { service: "escooter-repair-directory" }, // Added to all log entries
   transports: [
     // Console Transport: All logs will be output to console with colors
     new winston.transports.Console({
