@@ -27,7 +27,7 @@ export const getGooglePlacesCrawlerConfig = (
   maxReviews: 100, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
   //reviewsStartDate: "", // YYYY-MM-DD or ISO date or relative (e.g., "3 months")
   reviewsSort: "newest", // "newest", "mostRelevant", "highestRanking", "lowestRanking"
-  reviewsFilterString: "scooter", // Only include reviews containing these keywords
+  //reviewsFilterString: "scooter", // Only include reviews containing these keywords
   scrapeReviewsPersonalData: true, // true = include reviewer details
 
   // Questions
@@ -42,7 +42,22 @@ export const getGooglePlacesCrawlerConfig = (
   //customGeolocation: {}, // Custom area using [longitude, latitude] coordinates
 
   // Filtering Options
-  //categoryFilterWords: [], // Filter by place categories (e.g., ["restaurant", "cafe"])
+  categoryFilterWords: [
+    "bicycle repair shop",
+    "bicycle store",
+    "electric bicycle store",
+    "electric motor scooter dealer",
+    "electric motor store",
+    "electric motor vehicle dealer",
+    "electric motorcycle dealer",
+    "electronics store",
+    "electronics repair shop",
+    "motor scooter dealer",
+    "motor scooter repair shop",
+    "motorcycle repair shop",
+    "scooter rental service",
+    "scooter repair shop",
+  ], // Filter by place categories (e.g., ["restaurant", "cafe"])
   //searchMatching: "all", // "all", "only_includes", "only_exact" - how strictly title must match search
   //placeMinimumStars: "", // Minimum rating: "two", "twoAndHalf", "three", "threeAndHalf", "four", "fourAndHalf"
   skipClosedPlaces: true, // true = skip temporarily/permanently closed places

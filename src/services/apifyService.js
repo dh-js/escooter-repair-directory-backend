@@ -155,6 +155,10 @@ export const crawlerGooglePlaces = async (
       .dataset(run.defaultDatasetId)
       .listItems();
 
+    // Add counters for filtered stores
+    let walmartCount = 0;
+    let targetCount = 0;
+
     // Transform items into our schema format
     // Add counter for validation failures
     let validationFailures = 0;
@@ -164,7 +168,21 @@ export const crawlerGooglePlaces = async (
         if (result === null) validationFailures++;
         return result;
       })
-      .filter((store) => store !== null);
+      // Filter out null results from transformStoreData
+      .filter((store) => store !== null)
+      // Additional filter to exclude Walmart and Target stores (case-insensitive)
+      .filter((store) => {
+        const storeName = store.name.toLowerCase();
+        if (storeName.includes("walmart")) {
+          walmartCount++;
+          return false;
+        }
+        if (storeName.includes("target")) {
+          targetCount++;
+          return false;
+        }
+        return true;
+      });
 
     // Update results count
     runDetails.resultsCount = items.length;
@@ -172,6 +190,17 @@ export const crawlerGooglePlaces = async (
     logger.info(`Scraped and transformed ${items.length} places`, {
       filepath,
       validationFailures,
+    });
+
+    logger.info(
+      `Filtered out ${walmartCount} Walmart and ${targetCount} Target stores`,
+      {
+        filepath,
+      }
+    );
+
+    logger.info(`Total stores after filtering: ${stores.length}`, {
+      filepath,
     });
 
     // Return both the transformed items, run info, and raw items in development
