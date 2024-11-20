@@ -3,28 +3,28 @@ import { crawlerGooglePlaces } from "../../services/apifyService.js";
 import {
   writeApifyRunDetails,
   writeStores,
-} from "../../services/supabaseService.js";
+} from "../../services/supabaseServicesScrape.js";
 import logger from "../../utils/logger.js";
-import { liveConfig } from "../../config/scrapeConfig.js";
+import { scrapeConfig } from "../../config/scrapeConfig.js";
 
-const filepath = "routes/v1/live.routes.js";
+const filepath = "routes/v1/scrape.routes.js";
 const router = Router();
 
 // Extract the scraping logic into a separate function
-export async function runLiveScrape() {
+export async function runScrape() {
   try {
     logger.info("Starting live scrape job...", { filepath });
 
     // Process each state sequentially
-    for (const state of liveConfig.states) {
+    for (const state of scrapeConfig.states) {
       logger.info(`Starting scrape for state: ${state}`, { filepath });
 
       const { stores, runDetails, validationFailures } =
         await crawlerGooglePlaces(
-          liveConfig.searchQueries,
+          scrapeConfig.searchQueries,
           state,
           "", // empty city for state-wide search
-          liveConfig.maxResults
+          scrapeConfig.maxResults
         );
 
       // Store the results
@@ -61,7 +61,7 @@ export async function runLiveScrape() {
 }
 
 // Simplified route handler that calls the extracted function
-router.post("/scrape", async (req, res, next) => {
+router.post("/process", async (req, res, next) => {
   try {
     logger.info("Triggering new live scrape job...", { filepath });
 
@@ -73,7 +73,7 @@ router.post("/scrape", async (req, res, next) => {
     });
 
     // Run the scrape job
-    await runLiveScrape();
+    await runScrape();
   } catch (error) {
     logger.error("Scrape job failed:", error, { filepath });
     // Since we already sent the response, we just log the error

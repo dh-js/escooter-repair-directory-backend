@@ -1,12 +1,12 @@
 import { Router } from "express";
-import liveRoutes from "./live.routes.js";
-import testRoutes from "./test.routes.js";
+import scrapeRoutes from "./scrape.routes.js";
 import healthRoutes from "./health.routes.js";
+import aiRoutes from "./ai.routes.js";
 
 const router = Router();
 
 router.use("/", healthRoutes);
-router.use("/live", liveRoutes);
-router.use("/test", testRoutes);
+router.use("/scrape", scrapeRoutes);
+router.use("/ai", aiRoutes);
 
 export default router;
