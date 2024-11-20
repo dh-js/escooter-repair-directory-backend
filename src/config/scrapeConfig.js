@@ -7,7 +7,7 @@ export const liveConfig = {
     "bicycle Repair",
   ],
   states: US_STATES,
-  maxResults: 9999999, // Max results per search term. Use 9999999 for all available. <200 disables deeperCityScrape
+  maxResults: 100, //9999999, // Max results per search term. Use 9999999 for all available. <200 disables deeperCityScrape
 };
 
 export const testConfig = {
