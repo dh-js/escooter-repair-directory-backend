@@ -24,14 +24,14 @@ export const getGooglePlacesCrawlerConfig = (
   deeperCityScrape: true, // true = more thorough search in populated areas (slower but more results)
 
   // Review Settings
-  maxReviews: 400, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
+  maxReviews: 300, //400, // 0 = no reviews, 99999 = all reviews. Max 5000 per place item
   //reviewsStartDate: "", // YYYY-MM-DD or ISO date or relative (e.g., "3 months")
   reviewsSort: "newest", // "newest", "mostRelevant", "highestRanking", "lowestRanking"
   //reviewsFilterString: "scooter", // Only include reviews containing these keywords
   scrapeReviewsPersonalData: true, // true = include reviewer details
 
   // Questions
-  maxQuestions: 999, // 0 = first Q&A only, 999 = all questions
+  maxQuestions: 300, // 0 = first Q&A only, 999 = all questions
 
   // Location Settings
   countryCode: "us",
