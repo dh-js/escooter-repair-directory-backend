@@ -12,6 +12,22 @@ app.use(express.json());
 app.use(helmet());
 app.use(cors());
 
+// API key middleware
+app.use("/api/v1", (req, res, next) => {
+  // Skip auth for health check endpoint
+  if (req.path === "/" || req.path === "/healthz") {
+    return next();
+  }
+
+  const apiKey = req.headers["x-api-key"];
+  if (!apiKey || apiKey !== process.env.API_KEY) {
+    return res.status(401).json({
+      error: { message: "Invalid or missing API key" },
+    });
+  }
+  next();
+});
+
 app.use("/api/v1", v1Router);
 
 // Error handling middleware
