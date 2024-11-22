@@ -42,20 +42,7 @@ export const getGooglePlacesCrawlerConfig = (
   //customGeolocation: {}, // Custom area using [longitude, latitude] coordinates
 
   // Filtering Options
-  categoryFilterWords: [
-    "bicycle repair shop",
-    "bicycle store",
-    "electric bicycle store",
-    "electric motor scooter dealer",
-    "electric motor store",
-    "electric motor vehicle dealer",
-    "electric motorcycle dealer",
-    "motor scooter dealer",
-    "motor scooter repair shop",
-    "motorcycle repair shop",
-    "scooter rental service",
-    "scooter repair shop",
-  ], // Filter by place categories (e.g., ["restaurant", "cafe"])
+  categoryFilterWords: ["electronics store", "electronics repair shop"], // Filter by place categories (e.g., ["restaurant", "cafe"])
   //searchMatching: "all", // "all", "only_includes", "only_exact" - how strictly title must match search
   //placeMinimumStars: "", // Minimum rating: "two", "twoAndHalf", "three", "threeAndHalf", "four", "fourAndHalf"
   skipClosedPlaces: true, // true = skip temporarily/permanently closed places
