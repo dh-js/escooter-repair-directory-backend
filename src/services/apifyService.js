@@ -1,6 +1,7 @@
 import { ApifyClient } from "apify-client";
 import config from "../config/config.js";
-import { getGooglePlacesCrawlerConfig } from "../config/actorConfig.js";
+import { getActorConfig } from "../config/actorConfig.js";
+import { getBestBuyActorConfig } from "../config/bestBuyActorConfig.js";
 import logger from "../utils/logger.js";
 
 const filepath = "services/apifyService.js";
@@ -115,9 +116,7 @@ export const crawlerGooglePlaces = async (
 
     const run = await apifyClient
       .actor("compass/crawler-google-places")
-      .call(
-        getGooglePlacesCrawlerConfig(searchQueries, state, city, maxResults)
-      );
+      .call(getActorConfig(searchQueries, state, city, maxResults));
 
     // Collect run information
     const runDetails = {

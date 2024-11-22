@@ -55,6 +55,7 @@ export const getGooglePlacesCrawlerConfig = (
     "motorcycle repair shop",
     "scooter rental service",
     "scooter repair shop",
+    "appliance store",
   ], // Filter by place categories (e.g., ["restaurant", "cafe"])
   //searchMatching: "all", // "all", "only_includes", "only_exact" - how strictly title must match search
   //placeMinimumStars: "", // Minimum rating: "two", "twoAndHalf", "three", "threeAndHalf", "four", "fourAndHalf"

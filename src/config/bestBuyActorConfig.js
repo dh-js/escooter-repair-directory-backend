@@ -1,5 +1,5 @@
 // Google Places Crawler Actor Configuration
-export const getGooglePlacesCrawlerConfig = (
+export const getBestBuyActorConfig = (
   searchQueries,
   state,
   city,
@@ -43,7 +43,7 @@ export const getGooglePlacesCrawlerConfig = (
 
   // Filtering Options
   categoryFilterWords: ["electronics store", "electronics repair shop"], // Filter by place categories (e.g., ["restaurant", "cafe"])
-  //searchMatching: "all", // "all", "only_includes", "only_exact" - how strictly title must match search
+  searchMatching: "only_exact", // "all", "only_includes", "only_exact" - how strictly title must match search
   //placeMinimumStars: "", // Minimum rating: "two", "twoAndHalf", "three", "threeAndHalf", "four", "fourAndHalf"
   skipClosedPlaces: true, // true = skip temporarily/permanently closed places
   //website: "allPlaces", // "allPlaces", "withWebsite", "withoutWebsite"
