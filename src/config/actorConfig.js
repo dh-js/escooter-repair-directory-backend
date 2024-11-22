@@ -1,10 +1,5 @@
 // Google Places Crawler Actor Configuration
-export const getGooglePlacesCrawlerConfig = (
-  searchQueries,
-  state,
-  city,
-  maxResults
-) => ({
+export const getActorConfig = (searchQueries, state, city, maxResults) => ({
   // Search Parameters
   searchStringsArray: searchQueries, // Array of search terms
   //locationQuery: "", // Free text location (e.g., "New York, USA").Takes precedence over other location params
