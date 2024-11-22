@@ -1,7 +1,6 @@
 import { ApifyClient } from "apify-client";
 import config from "../config/config.js";
 import { getActorConfig } from "../config/actorConfig.js";
-import { getBestBuyActorConfig } from "../config/bestBuyActorConfig.js";
 import logger from "../utils/logger.js";
 
 const filepath = "services/apifyService.js";

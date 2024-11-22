@@ -26,31 +26,54 @@ const customFormat = winston.format.combine(
 );
 
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info", // Default to 'info' if not specified
+  // Add these options to handle concurrent writes better
+  handleExceptions: true,
+  handleRejections: true,
+  exitOnError: false,
+  // Increase buffer size and add flush interval
+  bufferMax: 1000,
+  flushInterval: 1000,
+
+  level: process.env.LOG_LEVEL || "info",
   format: customFormat,
   transports: [
-    // Console Transport: All logs will be output to console with colors
+    // Console Transport with synchronized writing
     new winston.transports.Console({
       format: winston.format.combine(winston.format.colorize(), customFormat),
+      // Add these options
+      eol: "\n",
+      sync: true,
     }),
 
-    // Error Log File: Only error-level logs
-    // Location: logs/error.log
+    // File transports with proper stream handling
     new winston.transports.File({
       filename: "logs/error.log",
       level: "error",
-      maxsize: 5242880, // 5MB
-      maxFiles: 5, // Keep 5 rotated files maximum
+      maxsize: 5242880,
+      maxFiles: 5,
+      // Add these options
+      eol: "\n",
+      tailable: true,
+      zippedArchive: true,
+      options: { flags: "a" },
     }),
 
-    // Combined Log File: All logs regardless of level (debug, info, warn, error)
-    // Location: logs/combined.log
     new winston.transports.File({
       filename: "logs/combined.log",
-      maxsize: 5242880, // 5MB
-      maxFiles: 5, // Keep 5 rotated files maximum
+      maxsize: 5242880,
+      maxFiles: 5,
+      // Add these options
+      eol: "\n",
+      tailable: true,
+      zippedArchive: true,
+      options: { flags: "a" },
     }),
   ],
+});
+
+// Add a flush handler for clean shutdown
+process.on("exit", () => {
+  logger.end();
 });
 
 // Exception & Rejection Handling

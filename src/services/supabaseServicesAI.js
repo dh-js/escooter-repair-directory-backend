@@ -6,105 +6,177 @@ const filepath = "services/supabaseServicesAI.js";
 const supabase = createClient(config.supabase.url, config.supabase.key);
 
 /**
- * Fetches stores that need AI processing
- * @param {number} limit - Maximum number of stores to fetch
+ * Fetches store data from Supabase database based on specified criteria
+ *
+ * @param {Object} options - Configuration options for the fetch operation
+ * @param {string} [options.mode='unprocessed'] - Fetch mode:
+ *   - 'unprocessed': Stores without AI summaries
+ *   - 'single': Specific store by place_id
+ *   - 'all': All stores in the database
+ * @param {string} [options.place_id=null] - Specific store ID (required for 'single' mode)
+ * @param {number|null} [options.limit=null] - Maximum number of stores to fetch
+ *   - null means no limit will be applied
+ *   - Ignored in 'single' mode
+ * @returns {Promise<Array>} Array of store objects with their details
  */
-export const fetchUnprocessedStoresDb = async (limit = 100) => {
+export const fetchStoresDb = async ({
+  mode = "unprocessed",
+  place_id = null,
+  limit = null,
+} = {}) => {
   try {
-    const { data, error } = await supabase
-      .from("stores")
-      .select("*")
-      .is("ai_summary", null)
-      .limit(limit);
-
-    if (error) {
-      logger.error("Error fetching unprocessed stores:", {
-        filepath,
-        error: error.message,
-        code: error.code,
-      });
-      throw error;
+    // Input validation section
+    // Ensure mode is one of the allowed values
+    if (!["unprocessed", "single", "all"].includes(mode)) {
+      throw new Error(`Invalid mode: ${mode}`);
     }
 
-    logger.info(`Fetched ${data.length} unprocessed stores`, {
+    // For single store fetch, place_id is mandatory
+    if (mode === "single" && !place_id) {
+      throw new Error("place_id is required when mode is 'single'");
+    }
+
+    // If limit is provided, ensure it's a valid positive integer
+    if (limit !== null && (limit <= 0 || !Number.isInteger(limit))) {
+      throw new Error("limit must be a positive integer or null");
+    }
+
+    // Build the base query
+    // Select specific columns needed for AI processing
+    let query = supabase
+      .from("stores")
+      .select(
+        "place_id, name, subtitle, description, categories, total_score, reviews, questions_and_answers"
+      );
+
+    // Apply mode-specific filters
+    switch (mode) {
+      case "unprocessed":
+        // Get only stores that haven't been processed by AI yet
+        query = query.is("ai_summary", null);
+        break;
+      case "single":
+        // Get specific store by place_id
+        query = query.eq("place_id", place_id);
+        break;
+      case "all":
+        // No additional filters needed for 'all' mode
+        break;
+    }
+
+    // Apply limit if provided and not in single mode
+    // Single mode always returns one record, so limit is unnecessary
+    if (limit !== null && mode !== "single") {
+      query = query.limit(limit);
+    }
+
+    // Execute the query
+    const { data, error } = await query;
+
+    // Error handling for database operation failures
+    if (error) {
+      const enhancedError = new Error(
+        `Failed to fetch stores: ${error.message}`
+      );
+      enhancedError.originalError = error;
+      throw enhancedError;
+    }
+
+    // Ensure we received data from the database
+    if (!data) {
+      throw new Error("No data returned from database");
+    }
+
+    // Log successful operation with relevant details
+    logger.info(`Fetched stores successfully`, {
       filepath,
-      limit,
+      mode,
+      count: data.length,
+      place_id: mode === "single" ? place_id : undefined, // Only include place_id for single mode
+      limit: mode !== "single" ? limit : undefined, // Only include limit for non-single modes
+      firstStore: data[0]?.place_id, // Log first store ID for debugging
     });
 
     return data;
   } catch (error) {
-    logger.error("Failed to fetch unprocessed stores:", error, { filepath });
+    // Comprehensive error logging for debugging
+    logger.error("Failed to fetch stores:", {
+      filepath,
+      mode,
+      place_id: mode === "single" ? place_id : undefined,
+      error: error.message,
+      stack: error.stack,
+    });
+    // Re-throw error for handling by caller
     throw error;
   }
 };
 
 /**
- * Updates stores with their AI summaries in batches
+ * Updates stores with their AI summaries
  */
 export const writeAISummariesToDb = async (storeSummaries) => {
-  try {
-    if (!storeSummaries?.length) {
-      throw new Error("No store summaries provided to write");
-    }
+  const successful = [];
+  const failed = [];
 
-    // Process summaries in batches
-    const BATCH_SIZE = 50;
-    const results = {
-      successful: [],
-      failed: [],
-    };
+  // Split stores into batches
+  for (let i = 0; i < storeSummaries.length; i += 50) {
+    const batch = storeSummaries.slice(i, i + 50);
+    let retryCount = 0;
+    let batchSuccess = false;
 
-    for (let i = 0; i < storeSummaries.length; i += BATCH_SIZE) {
-      const batch = storeSummaries.slice(i, i + BATCH_SIZE);
-
-      const { data, error } = await supabase.from("stores").upsert(
-        batch.map(({ place_id, ai_summary }) => ({
-          place_id,
-          ai_summary,
-          ai_summary_updated_at: new Date().toISOString(),
-        })),
-        {
-          onConflict: "place_id",
-          returning: true,
+    // Attempt to process this batch with retries
+    while (retryCount < 3 && !batchSuccess) {
+      try {
+        if (retryCount > 0) {
+          const retryDelay = 1000 * Math.pow(2, retryCount - 1);
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
         }
-      );
 
-      if (error) {
-        logger.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, {
+        // Process each store in the batch
+        for (const store of batch) {
+          const { data, error } = await supabase
+            .from("stores")
+            .update({
+              ai_summary: store.ai_summary,
+              ai_summary_updated_at: new Date().toISOString(),
+            })
+            .eq("place_id", store.place_id);
+
+          if (error) throw error;
+
+          successful.push(store);
+        }
+
+        batchSuccess = true;
+
+        logger.info(`Batch update successful`, {
           filepath,
-          error: error.message,
-          failedCount: batch.length,
+          batchSize: batch.length,
+          totalSuccessful: successful.length,
+          progress: `${i + batch.length}/${storeSummaries.length}`,
         });
-        results.failed.push(...batch);
-        continue;
-      }
+      } catch (error) {
+        retryCount++;
 
-      if (data) {
-        results.successful.push(...data);
+        if (retryCount === 3) {
+          logger.error(`Batch update failed after all retries`, {
+            filepath,
+            error: error.message,
+            batchSize: batch.length,
+            startIndex: i,
+          });
+
+          failed.push(
+            ...batch.map((store) => ({
+              place_id: store.place_id,
+              error: error.message,
+            }))
+          );
+        }
       }
     }
-
-    const summary = {
-      totalProcessed: storeSummaries.length,
-      successful: results.successful.length,
-      failed: results.failed.length,
-      failedStores: results.failed.map((store) => ({
-        place_id: store.place_id,
-      })),
-    };
-
-    logger.info("AI summary update operation completed", {
-      filepath,
-      ...summary,
-    });
-
-    return summary;
-  } catch (error) {
-    logger.error("AI summary update operation failed:", {
-      filepath,
-      error: error.message,
-      totalStores: storeSummaries?.length,
-    });
-    throw error;
   }
+
+  return { successful, failed };
 };

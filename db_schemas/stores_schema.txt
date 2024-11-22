@@ -78,6 +78,7 @@ AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < 
 - repair_tier: INTEGER (1-3, repair service level, CHECK (repair_tier BETWEEN 1 AND 3))
 - service_tiers: JSONB (specific services offered)
 - ai_summary: TEXT (Claude's analysis)
+- ai_summary_updated_at: TIMESTAMPTZ (timestamp of last AI summary update)
 - confidence_score: NUMERIC(3,2) (AI confidence 0-1, CHECK (confidence_score BETWEEN 0 AND 1))
 
 [Verification & Maintenance]
@@ -175,6 +176,7 @@ CREATE TABLE stores (
     repair_tier INTEGER,
     service_tiers JSONB,
     ai_summary TEXT,
+    ai_summary_updated_at TIMESTAMPTZ,
     confidence_score NUMERIC(3,2) CHECK (confidence_score BETWEEN 0 AND 1),
 
     -- Verification & Maintenance
