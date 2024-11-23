@@ -38,9 +38,10 @@ const AI_PROCESSING_MODES = {
   },
 };
 
+// This is just how many are passed to the AI, to set the maxes for the scrape make the adjustments in actorConfig.js
 const AI_CONFIG = {
-  MAX_REVIEWS: 300,
-  MAX_QAS: 300,
+  MAX_REVIEWS: 100,
+  MAX_QAS: 100,
 };
 
 export async function runAIProcessing() {
