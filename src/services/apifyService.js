@@ -33,6 +33,7 @@ const transformStoreData = (item) => {
       place_id: item.placeId,
       search_string: item.searchString,
       search_page_url: item.searchPageUrl,
+      maps_url: item.url,
 
       // Basic Store Information
       name: item.title,
@@ -214,6 +215,7 @@ export const crawlerGooglePlaces = async (
   }
 };
 
+// Fetch and transform a specific dataset
 export const fetchAndTransformDataset = async (datasetId) => {
   try {
     if (!datasetId) {
@@ -237,6 +239,14 @@ export const fetchAndTransformDataset = async (datasetId) => {
       logger.info("First raw item from dataset:", {
         filepath,
         firstItem: JSON.stringify(items[0], null, 2),
+      });
+    }
+
+    // Log the first store before transformation
+    if (items.length > 0) {
+      logger.info("First store before transformation:", {
+        filepath,
+        rawStore: items[0],
       });
     }
 

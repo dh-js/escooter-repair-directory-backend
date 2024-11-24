@@ -31,6 +31,7 @@ AND earth_distance(ll_to_earth($lat, $lng), ll_to_earth(latitude, longitude)) < 
 - place_id: TEXT (unique, Google Maps identifier)
 - search_string: TEXT (search term used to find store)
 - search_page_url: TEXT (Google Maps search results URL)
+- maps_url: TEXT (Google Maps direct URL)
 
 [Basic Store Information]
 - name: TEXT (required, store name)
@@ -129,6 +130,7 @@ CREATE TABLE stores (
     place_id TEXT UNIQUE NOT NULL,
     search_string TEXT NOT NULL,
     search_page_url TEXT,
+    maps_url TEXT,
 
     -- Basic Store Information
     name TEXT NOT NULL,
