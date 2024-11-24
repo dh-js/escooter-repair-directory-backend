@@ -76,6 +76,9 @@ export const writeApifyRunDetails = async (runDetails) => {
  * Writes or updates store data in the stores table
  */
 export const writeStores = async (stores) => {
+  const MAX_RETRIES = 3;
+  const BATCH_SIZE = 100;
+
   try {
     if (!stores?.length) {
       throw new Error("No stores provided to write");
@@ -97,27 +100,68 @@ export const writeStores = async (stores) => {
       throw new Error("No valid stores to write after filtering");
     }
 
-    // Get existing place_ids in one query
-    const { data: existingStores, error: existingError } = await supabase
-      .from("stores")
-      .select("place_id")
-      .in(
-        "place_id",
-        validStores.map((store) => store.place_id)
-      );
+    // Log the first valid store (maintaining original logging)
+    logger.info("First valid store:", {
+      filepath,
+      firstStore: validStores[0],
+      totalValidStores: validStores.length,
+    });
 
-    if (existingError) {
-      throw new Error(
-        `Failed to fetch existing stores: ${existingError.message}`
-      );
+    // Fetch existing stores with retry logic
+    let existingStores = [];
+
+    // Get array of place_ids and validate
+    const placeIds = validStores.map((store) => store.place_id).filter(Boolean);
+
+    if (!placeIds.length) {
+      logger.warn("No valid place_ids to query", { filepath });
+      existingStores = [];
+    } else {
+      // Split place_ids into same size chunks as write operation
+      for (let i = 0; i < placeIds.length; i += BATCH_SIZE) {
+        const placeIdChunk = placeIds.slice(i, i + BATCH_SIZE);
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const { data, error } = await supabase
+              .from("stores")
+              .select("place_id")
+              .in("place_id", placeIdChunk);
+
+            if (error) throw error;
+
+            existingStores = [...existingStores, ...(data || [])];
+            break;
+          } catch (error) {
+            logger.warn(
+              `Fetch existing stores chunk ${i}-${
+                i + BATCH_SIZE
+              }: Attempt ${attempt}/${MAX_RETRIES} failed`,
+              {
+                filepath,
+                error: error.message,
+                errorDetails: error.details || {},
+                chunkSize: placeIdChunk.length,
+              }
+            );
+
+            if (attempt === MAX_RETRIES) {
+              throw new Error(
+                `Failed to fetch existing stores chunk: ${error.message}`
+              );
+            }
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, Math.pow(2, attempt) * 1000)
+            );
+          }
+        }
+      }
     }
 
     const existingPlaceIds = new Set(
       existingStores?.map((store) => store.place_id) || []
     );
-
-    // Process stores in batches
-    const BATCH_SIZE = 100;
     const results = {
       successful: [],
       failed: [],
@@ -125,45 +169,52 @@ export const writeStores = async (stores) => {
       updatedStores: [],
     };
 
+    // Process stores in batches with retry logic
     for (let i = 0; i < validStores.length; i += BATCH_SIZE) {
       const batch = validStores.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
 
-      const { data, error } = await supabase.from("stores").upsert(batch, {
-        onConflict: "place_id",
-        returning: true,
-      });
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const { data, error } = await supabase.from("stores").upsert(batch, {
+            onConflict: "place_id",
+            returning: true,
+          });
 
-      if (error) {
-        logger.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, {
-          filepath,
-          error: error.message,
-          failedCount: batch.length,
-        });
-        results.failed.push(...batch);
-        continue;
-      }
+          if (error) throw error;
 
-      if (!data) {
-        // If no data returned but also no error, consider the batch successful
-        results.successful.push(...batch);
-        // Correctly categorize stores based on existingPlaceIds
-        batch.forEach((store) => {
-          if (existingPlaceIds.has(store.place_id)) {
-            results.updatedStores.push(store);
-          } else {
-            results.newStores.push(store);
+          // Process successful batch
+          const processedStores = data || batch;
+          results.successful.push(...processedStores);
+          processedStores.forEach((store) => {
+            if (existingPlaceIds.has(store.place_id)) {
+              results.updatedStores.push(store);
+            } else {
+              results.newStores.push(store);
+            }
+          });
+
+          break;
+        } catch (error) {
+          logger.warn(
+            `Batch ${batchNumber}: Attempt ${attempt}/${MAX_RETRIES} failed`,
+            {
+              filepath,
+              error: error.message,
+            }
+          );
+
+          if (attempt === MAX_RETRIES) {
+            logger.error(`Batch ${batchNumber} failed all retry attempts`, {
+              filepath,
+              error: error.message,
+            });
+            results.failed.push(...batch);
+            break;
           }
-        });
-      } else {
-        // Process returned data as before
-        data.forEach((store) => {
-          results.successful.push(store);
-          if (existingPlaceIds.has(store.place_id)) {
-            results.updatedStores.push(store);
-          } else {
-            results.newStores.push(store);
-          }
-        });
+
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        }
       }
     }
 
@@ -186,10 +237,14 @@ export const writeStores = async (stores) => {
 
     return summary;
   } catch (error) {
+    // Enhanced error logging
     logger.error("Store operation failed:", {
       filepath,
       error: error.message,
+      errorStack: error.stack,
       totalStores: stores?.length,
+      supabaseUrl: config.supabase.url ? "Configured" : "Missing",
+      supabaseKey: config.supabase.key ? "Configured" : "Missing",
     });
     throw error;
   }

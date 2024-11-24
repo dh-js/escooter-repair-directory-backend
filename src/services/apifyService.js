@@ -213,3 +213,75 @@ export const crawlerGooglePlaces = async (
     throw error;
   }
 };
+
+export const fetchAndTransformDataset = async (datasetId) => {
+  try {
+    if (!datasetId) {
+      throw new Error("Dataset ID is required");
+    }
+
+    logger.info(`Fetching dataset: ${datasetId}`, { filepath });
+
+    // Get dataset items - using clean: true to get just the data without metadata
+    const { items } = await apifyClient.dataset(datasetId).listItems({
+      clean: true,
+    });
+
+    logger.info(`Retrieved ${items.length} items from dataset`, {
+      filepath,
+      datasetId,
+    });
+
+    // Log the first raw item from dataset
+    if (items.length > 0) {
+      logger.info("First raw item from dataset:", {
+        filepath,
+        firstItem: JSON.stringify(items[0], null, 2),
+      });
+    }
+
+    // Use the exact same transformation logic as the original scrape
+    let validationFailures = 0;
+    const stores = items
+      .map((item) => {
+        const result = transformStoreData(item);
+        if (result === null) validationFailures++;
+        return result;
+      })
+      .filter((store) => store !== null)
+      .filter((store) => {
+        const storeName = store.name.toLowerCase();
+        return !storeName.includes("walmart") && !storeName.includes("target");
+      });
+
+    // Log the first transformed store
+    if (stores.length > 0) {
+      logger.info("First transformed store:", {
+        filepath,
+        firstStore: JSON.stringify(stores[0], null, 2),
+      });
+    }
+
+    logger.info(`Dataset transformation complete`, {
+      filepath,
+      datasetId,
+      totalItems: items.length,
+      validStores: stores.length,
+      validationFailures,
+    });
+
+    return {
+      stores,
+      validationFailures,
+      totalProcessed: items.length,
+    };
+  } catch (error) {
+    logger.error("Error processing dataset:", {
+      filepath,
+      datasetId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+};
