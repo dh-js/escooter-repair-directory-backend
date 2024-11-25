@@ -49,8 +49,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin in development mode
-      if (process.env.NODE_ENV === "development") {
+      // Allow requests with no origin in development mode or for health checks
+      if (
+        process.env.NODE_ENV === "development" ||
+        req.path === "/api/health/healthz"
+      ) {
         return callback(null, true);
       }
 
