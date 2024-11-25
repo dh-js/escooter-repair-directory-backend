@@ -58,6 +58,7 @@ const allowedOrigins = [
 ];
 
 app.use(
+  "/api/v1",
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin in development mode only
