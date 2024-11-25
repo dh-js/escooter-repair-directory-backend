@@ -46,36 +46,30 @@ const allowedOrigins = [
   ...(process.env.NODE_ENV === "development" ? ["http://localhost:3000"] : []),
 ];
 
-// Create separate CORS configurations
-const healthCheckCors = cors(); // Allow all origins for health check
-const mainCors = cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin in development mode
-    if (process.env.NODE_ENV === "development") {
-      return callback(null, true);
-    }
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin in development mode
+      if (process.env.NODE_ENV === "development") {
+        return callback(null, true);
+      }
 
-    // Production mode: require an origin
-    if (!origin || !allowedOrigins.includes(origin)) {
-      logger.warn("CORS blocked request from origin:", {
-        filepath,
-        origin: origin || "no origin",
-      });
-      return callback(new Error("CORS error"));
-    }
-    callback(null, true);
-  },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "x-api-key"],
-  credentials: true,
-  optionsSuccessStatus: 200,
-});
-
-// Apply less restrictive CORS to health check endpoint
-app.use("/api/health/healthz", healthCheckCors);
-
-// Apply strict CORS to all other routes
-app.use(mainCors);
+      // Production mode: require an origin
+      if (!origin || !allowedOrigins.includes(origin)) {
+        logger.warn("CORS blocked request from origin:", {
+          filepath,
+          origin: origin || "no origin",
+        });
+        return callback(new Error("CORS error"));
+      }
+      callback(null, true);
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-api-key"],
+    credentials: true,
+    optionsSuccessStatus: 200,
+  })
+);
 
 // Rate limiting for search endpoint
 const searchLimiter = rateLimit({
