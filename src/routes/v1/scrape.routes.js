@@ -12,7 +12,7 @@ const filepath = "routes/v1/scrape.routes.js";
 const router = Router();
 
 // Add batch configuration at the top
-const BATCH_SIZE = 49;
+const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 5000; // Add delay between batches
 
 // Helper function to process a single state
