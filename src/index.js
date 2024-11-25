@@ -26,21 +26,32 @@ const healthCheckLimiter = rateLimit({
   },
 });
 
-// Basic security for health endpoint
-app.use("/api/health/healthz", healthCheckLimiter, (req, res, next) => {
-  // Only allow GET requests
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: { message: "Method not allowed" } });
-  }
-  next();
+// Add a separate CORS configuration for health checks that allows no origin
+const healthCheckCors = cors({
+  origin: true, // Allow all origins for health checks
+  methods: ["GET"],
+  optionsSuccessStatus: 200,
 });
+
+// Health check endpoint with its own CORS and rate limiting
+app.use(
+  "/api/health/healthz",
+  healthCheckCors,
+  healthCheckLimiter,
+  (req, res, next) => {
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: { message: "Method not allowed" } });
+    }
+    next();
+  }
+);
 
 // Health check endpoint
 app.get("/api/health/healthz", (req, res) => {
   res.status(200).json({ status: "OK" });
 });
 
-// CORS configuration
+// Main CORS configuration for other endpoints (remains strict)
 const allowedOrigins = [
   "https://your-wordpress-domain.com",
   ...(process.env.NODE_ENV === "development" ? ["http://localhost:3000"] : []),
@@ -49,11 +60,8 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin in development mode or for health checks
-      if (
-        process.env.NODE_ENV === "development" ||
-        req.path === "/api/health/healthz"
-      ) {
+      // Allow requests with no origin in development mode only
+      if (process.env.NODE_ENV === "development") {
         return callback(null, true);
       }
 
