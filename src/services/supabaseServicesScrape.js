@@ -101,11 +101,11 @@ export const writeStores = async (stores) => {
     }
 
     // Log the first valid store (maintaining original logging)
-    logger.info("First valid store:", {
-      filepath,
-      firstStore: validStores[0],
-      totalValidStores: validStores.length,
-    });
+    // logger.info("First valid store:", {
+    //   filepath,
+    //   firstStore: validStores[0],
+    //   totalValidStores: validStores.length,
+    // });
 
     // Fetch existing stores with retry logic
     let existingStores = [];
