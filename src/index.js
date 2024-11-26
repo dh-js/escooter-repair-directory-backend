@@ -42,7 +42,8 @@ app.get("/api/health/healthz", (req, res) => {
 
 // CORS configuration
 const allowedOrigins = [
-  "https://your-wordpress-domain.com",
+  "https://www.togetherweride.life",
+  "https://togetherweride.life",
   ...(process.env.NODE_ENV === "development" ? ["http://localhost:3000"] : []),
 ];
 
