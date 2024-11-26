@@ -48,8 +48,14 @@ router.get("/", async (req, res) => {
   } catch (error) {
     logger.error("Search request failed:", error, { filepath });
 
-    if (error.message === "Invalid ZIP code") {
-      return res.status(400).json({ error: "Invalid ZIP code provided" });
+    if (
+      error.message === "ZIP code must be a number between 3-5 digits" ||
+      error.message === "ZIP code not found"
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message === "ZIP code service unavailable") {
+      return res.status(503).json({ error: error.message });
     }
 
     res.status(500).json({

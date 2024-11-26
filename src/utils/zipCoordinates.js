@@ -4,8 +4,7 @@ import logger from "./logger.js";
 
 const filepath = "utils/zipCoordinates.js";
 
-// We'll use a simple ZIP code database (you'll need to add this)
-// Format: { "12345": { "latitude": 42.123, "longitude": -71.456 }, ... }
+// ZIP code database Format: { "12345": { "latitude": 42.123, "longitude": -71.456 }, ... }
 let zipDatabase = null;
 
 const initZipDatabase = async () => {
@@ -25,10 +24,15 @@ const initZipDatabase = async () => {
 
 export const getZipCoordinates = async (zipCode) => {
   await initZipDatabase();
-  const coordinates = zipDatabase[zipCode];
 
+  // Validate ZIP format (3-5 digits)
+  if (!/^\d{3,5}$/.test(zipCode)) {
+    throw new Error("ZIP code must be a number between 3-5 digits");
+  }
+
+  const coordinates = zipDatabase[zipCode];
   if (!coordinates) {
-    throw new Error("Invalid ZIP code");
+    throw new Error("ZIP code not found");
   }
 
   return coordinates;
