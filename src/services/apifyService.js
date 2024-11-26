@@ -183,6 +183,15 @@ export const crawlerGooglePlaces = async (
         return true;
       });
 
+    // Add deduplication step
+    const uniqueStores = stores.reduce((acc, store) => {
+      acc.set(store.place_id, store);
+      return acc;
+    }, new Map());
+
+    const duplicatesFound = stores.length - uniqueStores.size;
+    const dedupedStores = Array.from(uniqueStores.values());
+
     // Update results count
     runDetails.resultsCount = items.length;
 
@@ -198,13 +207,17 @@ export const crawlerGooglePlaces = async (
       }
     );
 
-    logger.info(`Total stores after filtering: ${stores.length}`, {
-      filepath,
-    });
+    logger.info(
+      `Total stores after filtering and deduplication: ${dedupedStores.length}`,
+      {
+        filepath,
+        duplicatesFound,
+      }
+    );
 
     // Return both the transformed items, run info, and raw items in development
     return {
-      stores,
+      stores: dedupedStores, // Return deduplicated stores instead of original stores
       runDetails,
       rawItems: config.nodeEnv === "development" ? items : undefined,
       validationFailures,
@@ -272,16 +285,26 @@ export const fetchAndTransformDataset = async (datasetId) => {
       });
     }
 
+    // Add deduplication step before returning
+    const uniqueStores = stores.reduce((acc, store) => {
+      acc.set(store.place_id, store);
+      return acc;
+    }, new Map());
+
+    const duplicatesFound = stores.length - uniqueStores.size;
+
     logger.info(`Dataset transformation complete`, {
       filepath,
       datasetId,
       totalItems: items.length,
       validStores: stores.length,
+      dedupedStores: uniqueStores.size,
+      duplicatesFound,
       validationFailures,
     });
 
     return {
-      stores,
+      stores: Array.from(uniqueStores.values()), // Return deduplicated stores
       validationFailures,
       totalProcessed: items.length,
     };
