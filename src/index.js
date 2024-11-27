@@ -78,6 +78,16 @@ app.use(
   })
 );
 
+// Helper function to get the real client IP
+const getClientIp = (req) => {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.headers["x-real-ip"] ||
+    req.ip ||
+    req.connection.remoteAddress
+  );
+};
+
 // Rate limiting for search endpoint
 const searchLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -86,29 +96,19 @@ const searchLimiter = rateLimit({
   standardHeaders: true,
   trustProxy: true,
   keyGenerator: (req) => {
-    // Log the various IP-related headers
+    const clientIp = getClientIp(req);
     logger.info("IP info for rate limiting:", {
       filepath,
+      clientIp,
       "x-forwarded-for": req.headers["x-forwarded-for"],
-      "real-ip": req.headers["x-real-ip"],
       "req.ip": req.ip,
-      "remote-addr": req.connection.remoteAddress,
     });
-
-    // Try different methods to get the real IP
-    const clientIp =
-      req.headers["x-forwarded-for"]?.split(",")[0] ||
-      req.headers["x-real-ip"] ||
-      req.ip ||
-      req.connection.remoteAddress;
-
-    logger.info(`Using IP for rate limiting: ${clientIp}`, { filepath });
     return clientIp;
   },
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       filepath,
-      ip: req.ip,
+      clientIp: getClientIp(req),
       forwardedFor: req.headers["x-forwarded-for"],
       path: req.path,
     });
@@ -145,7 +145,7 @@ app.use(
   (req, res, next) => {
     logger.info("Received search request", {
       filepath,
-      ip: req.ip,
+      clientIp: getClientIp(req),
       forwardedFor: req.headers["x-forwarded-for"],
       path: req.path,
       query: req.query,
