@@ -81,16 +81,33 @@ app.use(
 // Rate limiting for search endpoint
 const searchLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Adjust based on your needs
+  max: 5,
   message: { error: { message: "Too many requests from this IP" } },
   standardHeaders: true,
   trustProxy: true,
-  skipFailedRequests: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req) => {
+    // Log the various IP-related headers to debug
+    logger.debug("IP Debug info:", {
+      filepath,
+      "x-forwarded-for": req.headers["x-forwarded-for"],
+      "real-ip": req.headers["x-real-ip"],
+      "req.ip": req.ip,
+      "remote-addr": req.connection.remoteAddress,
+    });
+
+    // Try different methods to get the real IP
+    return (
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.headers["x-real-ip"] ||
+      req.ip ||
+      req.connection.remoteAddress
+    );
+  },
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       filepath,
       ip: req.ip,
+      forwardedFor: req.headers["x-forwarded-for"],
       path: req.path,
     });
     res.status(429).json({
