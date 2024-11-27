@@ -29,7 +29,8 @@ export const searchStores = async ({ latitude, longitude, radius }) => {
       total_score: store.total_score,
       reviews_count: store.reviews_count,
       additional_info: store.additional_info,
-      ai_summary: store.ai_summary,
+      ai_summary:
+        store.ai_summary || "The AI summary hasn't been processed yet",
       last_updated: store.last_updated,
       maps_url: store.maps_url,
       distance_miles: +(store.distance_meters / 1609.34).toFixed(1),

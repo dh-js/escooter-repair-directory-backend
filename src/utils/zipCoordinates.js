@@ -25,12 +25,12 @@ const initZipDatabase = async () => {
 export const getZipCoordinates = async (zipCode) => {
   await initZipDatabase();
 
-  // Validate ZIP format (3-5 digits)
-  if (!/^\d{3,5}$/.test(zipCode)) {
-    throw new Error("ZIP code must be a number between 3-5 digits");
+  // Validate input ZIP format (must be exactly 5 digits)
+  if (!/^[0-9]{5}$/.test(zipCode)) {
+    throw new Error("ZIP code must be exactly 5 digits");
   }
 
-  const coordinates = zipDatabase[zipCode];
+  const coordinates = zipDatabase[zipCode]; // Direct lookup with 5-digit ZIP
   if (!coordinates) {
     throw new Error("ZIP code not found");
   }

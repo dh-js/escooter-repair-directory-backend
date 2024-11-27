@@ -19,7 +19,7 @@ const customFormat = winston.format.combine(
     const { filepath: _, ...cleanMetadata } = metadata;
     let msg = `[${level}]${filepath ? ` [${filepath}]` : ""} : ${message}`;
     if (Object.keys(cleanMetadata).length > 0) {
-      msg += ` ${JSON.stringify(cleanMetadata)}`;
+      msg += ` ${JSON.stringify(cleanMetadata, null, 2)}`;
     }
     return msg;
   })
@@ -43,6 +43,7 @@ const logger = winston.createLogger({
       // Add these options
       eol: "\n",
       sync: true,
+      maxSize: "50m",
     }),
 
     // File transports with proper stream handling
@@ -69,6 +70,7 @@ const logger = winston.createLogger({
       options: { flags: "a" },
     }),
   ],
+  maxListeners: 100,
 });
 
 // Add a flush handler for clean shutdown

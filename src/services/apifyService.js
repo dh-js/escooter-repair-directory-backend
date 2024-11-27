@@ -247,22 +247,6 @@ export const fetchAndTransformDataset = async (datasetId) => {
       datasetId,
     });
 
-    // Log the first raw item from dataset
-    if (items.length > 0) {
-      logger.info("First raw item from dataset:", {
-        filepath,
-        firstItem: JSON.stringify(items[0], null, 2),
-      });
-    }
-
-    // Log the first store before transformation
-    if (items.length > 0) {
-      logger.info("First store before transformation:", {
-        filepath,
-        rawStore: items[0],
-      });
-    }
-
     // Use the exact same transformation logic as the original scrape
     let validationFailures = 0;
     const stores = items
@@ -276,14 +260,6 @@ export const fetchAndTransformDataset = async (datasetId) => {
         const storeName = store.name.toLowerCase();
         return !storeName.includes("walmart") && !storeName.includes("target");
       });
-
-    // Log the first transformed store
-    if (stores.length > 0) {
-      logger.info("First transformed store:", {
-        filepath,
-        firstStore: JSON.stringify(stores[0], null, 2),
-      });
-    }
 
     // Add deduplication step before returning
     const uniqueStores = stores.reduce((acc, store) => {

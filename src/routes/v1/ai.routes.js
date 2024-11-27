@@ -23,6 +23,7 @@ const router = Router();
  * @returns {Object} processingDetails - Contains statistics about the processing job
  */
 
+// May want to add a mode for "skipped" stores which are stores that had less than 10 reviews and had "No summary available: insufficient reviews" written to the ai_summary field. If in future the db gets updated and their review count is now >=10 and the ai_summary field is still "No summary available: insufficient reviews" then we can reprocess those stores.
 const AI_PROCESSING_MODES = {
   UNPROCESSED: {
     mode: "unprocessed",
@@ -35,6 +36,11 @@ const AI_PROCESSING_MODES = {
   ALL: {
     mode: "all",
     limit: 20, //null = no limit
+  },
+  STATE: {
+    mode: "state",
+    state: "Illinois",
+    limit: 5, // Optional limit
   },
 };
 
@@ -49,13 +55,21 @@ export async function runAIProcessing() {
     startedAt: new Date().toISOString(),
     totalStores: 0,
     failedStores: [],
+    skippedStores: [],
   };
 
   try {
-    logger.info("Starting AI processing job...", { filepath });
+    logger.info("Starting AI processing job...", {
+      filepath,
+      mode: AI_PROCESSING_MODES.STATE,
+      rateLimits: {
+        requestsPerMinute: 50,
+        tokensPerMinute: 40000,
+      },
+    });
 
     // Get stores based on the desired mode:
-    const fetchedStores = await fetchStoresDb(AI_PROCESSING_MODES.SINGLE);
+    const fetchedStores = await fetchStoresDb(AI_PROCESSING_MODES.STATE);
 
     /**
      * Format each store into an object containing AI-ready text and metadata
@@ -94,11 +108,74 @@ export async function runAIProcessing() {
 
     processingDetails.totalStores = formattedStores.length;
 
+    // After formatting stores
+    logger.info("Store details before processing:", {
+      filepath,
+      stores: formattedStores.map((store) => ({
+        place_id: store.place_id,
+        name: store.name,
+        reviews_count: store.reviews_count,
+        hasReviewsCount: "reviews_count" in store,
+        rawReviewsCount: store.reviews?.length || 0,
+      })),
+    });
+
     // Process stores and track results
     const processedStores = [];
 
     for (const store of formattedStores) {
       try {
+        logger.info(`\n${"=".repeat(80)}\nProcessing Store: ${store.name}`, {
+          filepath,
+          place_id: store.place_id,
+          section: "START",
+        });
+
+        // Review count check logging
+        logger.info(`Review Count Check`, {
+          filepath,
+          place_id: store.place_id,
+          section: "REVIEWS",
+          details: {
+            name: store.name,
+            reviews_count: store.reviews_count,
+            skipThreshold: 10,
+            willSkip: store.reviews_count < 10,
+          },
+        });
+
+        // Check if store has sufficient reviews
+        if (store.reviews_count < 10) {
+          processedStores.push({
+            place_id: store.place_id,
+            ai_summary: {
+              summary_text: "No summary available: insufficient reviews",
+              token_usage: 0,
+            },
+          });
+
+          processingDetails.skippedStores.push({
+            place_id: store.place_id,
+            reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
+          });
+
+          logger.info(`Store Processing Skipped`, {
+            filepath,
+            section: "SKIP",
+            details: {
+              storeId: store.place_id,
+              reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
+            },
+          });
+
+          logger.info(`${"=".repeat(80)}\n`, {
+            filepath,
+            place_id: store.place_id,
+            section: "END",
+          });
+          continue;
+        }
+
         const aiSummary = await claudeAPICall(store);
 
         if (!aiSummary?.summary_text || !aiSummary?.token_usage) {
@@ -110,11 +187,20 @@ export async function runAIProcessing() {
           ai_summary: aiSummary,
         });
 
-        logger.info(`Successfully processed store`, {
+        logger.info(`Store Processing Complete`, {
           filepath,
-          storeId: store.place_id,
-          progress: `${processedStores.length}/${processingDetails.totalStores}`,
-          tokenUsage: aiSummary.token_usage,
+          section: "SUCCESS",
+          details: {
+            storeId: store.place_id,
+            progress: `${processedStores.length}/${processingDetails.totalStores}`,
+            tokenUsage: aiSummary.token_usage,
+          },
+        });
+
+        logger.info(`${"=".repeat(80)}\n`, {
+          filepath,
+          place_id: store.place_id,
+          section: "END",
         });
       } catch (error) {
         processingDetails.failedStores.push({
@@ -122,23 +208,35 @@ export async function runAIProcessing() {
           error: error.message,
         });
 
-        logger.error(`Failed to process store: ${error.message}`, {
+        logger.error(`Store Processing Failed`, {
           filepath,
-          storeId: store.place_id,
-          error: error.message,
-          stack: error.stack,
+          section: "ERROR",
+          details: {
+            storeId: store.place_id,
+            error: error.message,
+            stack: error.stack,
+          },
+        });
+
+        logger.info(`${"=".repeat(80)}\n`, {
+          filepath,
+          place_id: store.place_id,
+          section: "END",
         });
       }
     }
 
     // Write successful stores to database
     if (processedStores.length > 0) {
-      try {
-        logger.info(`Starting database write`, {
-          filepath,
+      logger.info(`\n${"*".repeat(80)}\nStarting Database Write`, {
+        filepath,
+        section: "DATABASE_START",
+        details: {
           storesToProcess: processedStores.length,
-        });
+        },
+      });
 
+      try {
         const { successful, failed } = await writeAISummariesToDb(
           processedStores
         );
@@ -180,6 +278,11 @@ export async function runAIProcessing() {
         // Clear processedStores since none were successfully saved
         processedStores.length = 0;
       }
+
+      logger.info(`${"*".repeat(80)}\n`, {
+        filepath,
+        section: "DATABASE_END",
+      });
     }
 
     processingDetails.finishedAt = new Date().toISOString();
@@ -192,12 +295,13 @@ export async function runAIProcessing() {
     ).toFixed(1);
 
     logger.info(
-      `AI Processing Complete: ${processedStores.length}/${processingDetails.totalStores} stores successful (${durationSeconds}s)`,
+      `AI Processing Complete: ${processedStores.length}/${processingDetails.totalStores} stores processed`,
       {
         filepath,
         summary: {
           successful: processedStores.length,
           failed: processingDetails.failedStores.length,
+          skipped: processingDetails.skippedStores.length,
           total: processingDetails.totalStores,
           duration: `${durationSeconds}s`,
           successRate: `${(
@@ -205,6 +309,7 @@ export async function runAIProcessing() {
             100
           ).toFixed(1)}%`,
         },
+        skippedStores: processingDetails.skippedStores,
         failedStores: processingDetails.failedStores.map((store) => ({
           id: store.place_id,
           error: store.error,

@@ -12,7 +12,7 @@ const CLAUDE_CONFIG = {
   MODEL: "claude-3-5-sonnet-20241022",
   MAX_TOKENS: 1000,
   MAX_RETRIES: 3,
-  RETRY_DELAY: 10000,
+  RETRY_DELAY: 65000,
 };
 
 const SYSTEM_PROMPT = `You are a specialized content analyzer for an e-scooter repair shop directory. Your role is to analyze business data and create concise, factual summaries that help users find e-scooter repair services. Your responses must be exactly one paragraph of no more than 75 words. Never include advice about calling ahead or checking availability. Provide only the summary paragraph with no additional text, prefacing, or commentary.`;
@@ -32,6 +32,79 @@ Any text before or after the summary paragraph
 
 Context data from Google Maps:`;
 
+const RATE_LIMITS = {
+  REQUESTS_PER_MINUTE: 45,
+  TOKENS_PER_MINUTE: 35000, // minus 5000 for buffer
+};
+
+let requestsThisMinute = 0;
+let tokensThisMinute = 0;
+let lastResetTime = Date.now();
+
+async function checkRateLimits(estimatedInputTokens) {
+  const now = Date.now();
+  const timeElapsed = now - lastResetTime;
+
+  // Log current usage before potential reset
+  logger.debug("Rate limit status check", {
+    filepath,
+    currentUsage: {
+      requestsThisMinute,
+      tokensThisMinute,
+      timeElapsedMs: timeElapsed,
+    },
+  });
+
+  // Reset counters if a minute has passed
+  if (timeElapsed >= 60000) {
+    logger.info("Resetting rate limit counters", {
+      filepath,
+      previousUsage: {
+        requests: requestsThisMinute,
+        tokens: tokensThisMinute,
+      },
+    });
+    requestsThisMinute = 0;
+    tokensThisMinute = 0;
+    lastResetTime = now;
+    return; // No need to wait if we just reset
+  }
+
+  // Check if we would exceed limits
+  if (
+    requestsThisMinute >= RATE_LIMITS.REQUESTS_PER_MINUTE ||
+    tokensThisMinute + estimatedInputTokens >= RATE_LIMITS.TOKENS_PER_MINUTE
+  ) {
+    const waitTime = 60000 - timeElapsed;
+    logger.info("Rate limit threshold reached - enforcing wait", {
+      filepath,
+      currentUsage: {
+        requests: requestsThisMinute,
+        tokens: tokensThisMinute,
+      },
+      limits: RATE_LIMITS,
+      waitTimeMs: waitTime,
+    });
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+    requestsThisMinute = 0;
+    tokensThisMinute = 0;
+    lastResetTime = Date.now();
+  }
+
+  // Update counters BEFORE the API call
+  requestsThisMinute++;
+  tokensThisMinute += estimatedInputTokens;
+
+  logger.debug("Updated rate limit counters", {
+    filepath,
+    updatedUsage: {
+      requests: requestsThisMinute,
+      tokens: tokensThisMinute,
+      estimatedNewTokens: estimatedInputTokens,
+    },
+  });
+}
+
 /**
  * Makes API calls to Claude with robust retry logic and error handling
  * @param {Object} storeData - Formatted store data object
@@ -47,12 +120,18 @@ export const claudeAPICall = async (storeData) => {
   // Create redacted version for logging
   const redactedStoreText = createRedactedStoreText(storeData.storeTextForAI);
 
-  console.log("\n=== Claude API Request ===");
-  console.log("System Prompt:");
-  console.log(SYSTEM_PROMPT);
-  console.log("\nUser Prompt + Store Data (redacted):");
-  console.log(`${USER_PROMPT}\n\nSTORE DATA:\n${redactedStoreText}`);
-  console.log("=== End Request ===\n");
+  // Log the actual input that Claude received
+  // logger.info("Claude conversation details", {
+  //   filepath,
+  //   storeId: storeData.place_id,
+  //   conversation: JSON.stringify(
+  //     {
+  //       StoreText: `${storeData.storeTextForAI}`,
+  //     },
+  //     null,
+  //     2
+  //   ),
+  // });
 
   for (let attempt = 0; attempt < CLAUDE_CONFIG.MAX_RETRIES; attempt++) {
     try {
@@ -65,6 +144,17 @@ export const claudeAPICall = async (storeData) => {
           }
         );
       }
+
+      // Estimate input tokens (rough estimate: 4 chars = 1 token)
+      const estimatedInputTokens = Math.ceil(
+        (SYSTEM_PROMPT.length +
+          USER_PROMPT.length +
+          storeData.storeTextForAI.length) /
+          4
+      );
+
+      // Check rate limits before making request
+      await checkRateLimits(estimatedInputTokens);
 
       const response = await anthropic.messages.create({
         model: CLAUDE_CONFIG.MODEL,

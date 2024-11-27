@@ -13,7 +13,9 @@ const supabase = createClient(config.supabase.url, config.supabase.key);
  *   - 'unprocessed': Stores without AI summaries
  *   - 'single': Specific store by place_id
  *   - 'all': All stores in the database
+ *   - 'state': Stores in a specific state
  * @param {string} [options.place_id=null] - Specific store ID (required for 'single' mode)
+ * @param {string} [options.state=null] - Specific state ID (required for 'state' mode)
  * @param {number|null} [options.limit=null] - Maximum number of stores to fetch
  *   - null means no limit will be applied
  *   - Ignored in 'single' mode
@@ -22,18 +24,24 @@ const supabase = createClient(config.supabase.url, config.supabase.key);
 export const fetchStoresDb = async ({
   mode = "unprocessed",
   place_id = null,
+  state = null,
   limit = null,
 } = {}) => {
   try {
     // Input validation section
     // Ensure mode is one of the allowed values
-    if (!["unprocessed", "single", "all"].includes(mode)) {
+    if (!["unprocessed", "single", "all", "state"].includes(mode)) {
       throw new Error(`Invalid mode: ${mode}`);
     }
 
     // For single store fetch, place_id is mandatory
     if (mode === "single" && !place_id) {
       throw new Error("place_id is required when mode is 'single'");
+    }
+
+    // For state mode, state is mandatory
+    if (mode === "state" && !state) {
+      throw new Error("state is required when mode is 'state'");
     }
 
     // If limit is provided, ensure it's a valid positive integer
@@ -46,7 +54,7 @@ export const fetchStoresDb = async ({
     let query = supabase
       .from("stores")
       .select(
-        "place_id, name, subtitle, description, categories, total_score, reviews, questions_and_answers"
+        "place_id, name, subtitle, description, categories, total_score, reviews, questions_and_answers, reviews_count"
       );
 
     // Apply mode-specific filters
@@ -58,6 +66,9 @@ export const fetchStoresDb = async ({
       case "single":
         // Get specific store by place_id
         query = query.eq("place_id", place_id);
+        break;
+      case "state":
+        query = query.eq("state", state).is("ai_summary", null); // Only get unprocessed stores from state
         break;
       case "all":
         // No additional filters needed for 'all' mode

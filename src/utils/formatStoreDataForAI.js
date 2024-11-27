@@ -80,9 +80,11 @@ export function formatStoreDataForAI(
     });
   }
 
-  // Return structured object
+  // Return structured object with additional metadata
   return {
     place_id: store.place_id,
+    name: store.name,
+    reviews_count: store.reviews_count,
     storeTextForAI: parts.join("\n"),
     ai_summary: null,
   };

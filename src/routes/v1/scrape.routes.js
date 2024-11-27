@@ -165,62 +165,103 @@ router.post("/process", async (req, res, next) => {
   }
 });
 
-// Add this new route handler
-router.post("/write-dataset/:datasetId", async (req, res) => {
+// Helper function to process a single dataset
+async function processSingleDataset(datasetId) {
   try {
-    const { datasetId } = req.params;
+    logger.info(`Processing dataset: ${datasetId}`, { filepath });
 
-    if (!datasetId) {
-      return res.status(400).json({
-        success: false,
-        error: "Dataset ID is required",
-      });
-    }
-
-    logger.info(`Starting to process dataset: ${datasetId}`, { filepath });
-
-    // Fetch and transform the dataset
     const { stores, validationFailures, totalProcessed } =
       await fetchAndTransformDataset(datasetId);
 
     if (!stores?.length) {
-      return res.status(404).json({
+      return {
         success: false,
+        datasetId,
         error: "No valid stores found in dataset",
         totalProcessed,
         validationFailures,
-      });
+      };
     }
 
-    // Write to Supabase using existing writeStores function
     const results = await writeStores(stores);
 
-    logger.info(`Dataset processing complete`, {
-      filepath,
-      datasetId,
-      results,
-    });
-
-    res.json({
+    return {
       success: true,
       datasetId,
       results,
       totalProcessed,
       validStores: stores.length,
       validationFailures,
+    };
+  } catch (error) {
+    logger.error(`Failed to process dataset: ${datasetId}`, {
+      filepath,
+      error: error.message,
+    });
+    return {
+      success: false,
+      datasetId,
+      error: error.message,
+    };
+  }
+}
+
+// Updated route handler
+router.post("/write-dataset/:datasetIds", async (req, res) => {
+  try {
+    const { datasetIds } = req.params;
+    const datasetIdArray = datasetIds.split(",").map((id) => id.trim());
+
+    if (!datasetIdArray.length) {
+      return res.status(400).json({
+        success: false,
+        error: "At least one dataset ID is required",
+      });
+    }
+
+    logger.info(`Starting to process ${datasetIdArray.length} datasets`, {
+      filepath,
+      datasetIds: datasetIdArray,
+    });
+
+    // Process datasets sequentially
+    const results = [];
+    for (const datasetId of datasetIdArray) {
+      const result = await processSingleDataset(datasetId);
+      results.push(result);
+    }
+
+    // Calculate summary
+    const summary = {
+      totalDatasetsProcessed: results.length,
+      successful: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      totalStoresProcessed: results.reduce(
+        (sum, r) => sum + (r.validStores || 0),
+        0
+      ),
+      results,
+    };
+
+    logger.info(`Completed processing all datasets`, {
+      filepath,
+      summary,
+    });
+
+    res.json({
+      success: true,
+      summary,
     });
   } catch (error) {
-    logger.error("Failed to process dataset:", {
+    logger.error("Failed to process datasets:", {
       filepath,
       error: error.message,
       stack: error.stack,
-      datasetId: req.params.datasetId,
     });
 
     res.status(500).json({
       success: false,
       error: error.message,
-      datasetId: req.params.datasetId,
     });
   }
 });
