@@ -12,7 +12,7 @@ const app = express();
 
 // Enable trust proxy to properly handle client IPs when running behind a proxy (like Render)
 // This ensures rate limiting and logging show the actual client IP instead of the proxy's IP
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // Rate limiting specifically for health endpoint
 const healthCheckLimiter = rateLimit({
@@ -20,6 +20,7 @@ const healthCheckLimiter = rateLimit({
   max: 20, // max 20 requests per minute per IP
   message: { error: { message: "Too many health check requests" } },
   standardHeaders: true,
+  trustProxy: true,
   handler: (req, res) => {
     logger.warn("Health check rate limit exceeded", {
       filepath,
@@ -83,6 +84,7 @@ const searchLimiter = rateLimit({
   max: 100, // Adjust based on your needs
   message: { error: { message: "Too many requests from this IP" } },
   standardHeaders: true,
+  trustProxy: true,
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       filepath,
