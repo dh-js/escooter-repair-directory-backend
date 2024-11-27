@@ -11,6 +11,11 @@ router.get("/", async (req, res) => {
     const { zipCode, radius } = req.query;
 
     if (!zipCode) {
+      logger.warn("Missing ZIP code parameter", {
+        filepath,
+        params: { zipCode, radius },
+        error: "ZIP code is required",
+      });
       return res.status(400).json({
         error: { message: "ZIP code is required" },
       });
@@ -19,6 +24,11 @@ router.get("/", async (req, res) => {
     // Validate radius
     const parsedRadius = Number(radius);
     if (isNaN(parsedRadius) || parsedRadius <= 0 || parsedRadius > 150) {
+      logger.warn("Invalid radius parameter", {
+        filepath,
+        params: { zipCode, radius: radius },
+        error: "Radius must be between 1 and 150 miles",
+      });
       return res.status(400).json({
         error: { message: "Radius must be between 1 and 150 miles" },
       });
