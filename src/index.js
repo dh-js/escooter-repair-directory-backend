@@ -91,7 +91,7 @@ const getClientIp = (req) => {
 // Rate limiting for search endpoint
 const searchLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 100,
   message: { error: { message: "Too many requests from this IP" } },
   standardHeaders: true,
   trustProxy: true,
