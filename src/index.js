@@ -86,6 +86,7 @@ const searchLimiter = rateLimit({
   standardHeaders: true,
   trustProxy: true,
   skipFailedRequests: false,
+  keyGenerator: (req) => req.ip,
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       filepath,
@@ -120,7 +121,10 @@ const validateApiKey = (apiKey, requiredLevel) => {
 };
 
 // Public endpoints (with rate limiting)
-app.use("/api/v1/search", searchLimiter, (req, res, next) => {
+app.use("/api/v1/search", searchLimiter);
+
+// API key validation middleware should come after rate limiting
+app.use("/api/v1/search", (req, res, next) => {
   const apiKey = req.headers["x-api-key"];
   if (!apiKey || !validateApiKey(apiKey, "public")) {
     logger.warn("Invalid public API key", {
