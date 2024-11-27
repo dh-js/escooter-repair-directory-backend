@@ -81,10 +81,11 @@ app.use(
 // Rate limiting for search endpoint
 const searchLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Adjust based on your needs
+  max: 5, // Adjust based on your needs
   message: { error: { message: "Too many requests from this IP" } },
   standardHeaders: true,
   trustProxy: true,
+  skipFailedRequests: false,
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       filepath,
