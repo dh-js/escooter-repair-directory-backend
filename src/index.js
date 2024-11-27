@@ -5,9 +5,14 @@ import config from "./config/config.js";
 import logger from "./utils/logger.js";
 import helmet from "helmet";
 import v1Router from "./routes/v1/index.js";
+import crypto from "crypto";
 
 const filepath = "index.js";
 const app = express();
+
+// Enable trust proxy to properly handle client IPs when running behind a proxy (like Render)
+// This ensures rate limiting and logging show the actual client IP instead of the proxy's IP
+app.set("trust proxy", true);
 
 // Rate limiting specifically for health endpoint
 const healthCheckLimiter = rateLimit({
@@ -93,13 +98,22 @@ const searchLimiter = rateLimit({
 app.use(express.json());
 app.use(helmet());
 
-// Simplified API key validation
+// API key validation
 const validateApiKey = (apiKey, requiredLevel) => {
   const keys = {
     public: process.env.PUBLIC_API_KEY,
     admin: process.env.ADMIN_API_KEY,
   };
-  return apiKey === keys[requiredLevel];
+
+  // Compare API keys in a timing-safe manner - prevents timing attacks
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(apiKey),
+      Buffer.from(keys[requiredLevel])
+    );
+  } catch {
+    return false;
+  }
 };
 
 // Public endpoints (with rate limiting)
