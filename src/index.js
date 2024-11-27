@@ -86,8 +86,8 @@ const searchLimiter = rateLimit({
   standardHeaders: true,
   trustProxy: true,
   keyGenerator: (req) => {
-    // Log the various IP-related headers to debug
-    logger.debug("IP Debug info:", {
+    // Log the various IP-related headers
+    logger.info("IP info for rate limiting:", {
       filepath,
       "x-forwarded-for": req.headers["x-forwarded-for"],
       "real-ip": req.headers["x-real-ip"],
@@ -96,12 +96,14 @@ const searchLimiter = rateLimit({
     });
 
     // Try different methods to get the real IP
-    return (
+    const clientIp =
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.headers["x-real-ip"] ||
       req.ip ||
-      req.connection.remoteAddress
-    );
+      req.connection.remoteAddress;
+
+    logger.info(`Using IP for rate limiting: ${clientIp}`, { filepath });
+    return clientIp;
   },
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
@@ -138,7 +140,20 @@ const validateApiKey = (apiKey, requiredLevel) => {
 };
 
 // Public endpoints (with rate limiting)
-app.use("/api/v1/search", searchLimiter);
+app.use(
+  "/api/v1/search",
+  (req, res, next) => {
+    logger.info("Received search request", {
+      filepath,
+      ip: req.ip,
+      forwardedFor: req.headers["x-forwarded-for"],
+      path: req.path,
+      query: req.query,
+    });
+    next();
+  },
+  searchLimiter
+);
 
 // API key validation middleware should come after rate limiting
 app.use("/api/v1/search", (req, res, next) => {
