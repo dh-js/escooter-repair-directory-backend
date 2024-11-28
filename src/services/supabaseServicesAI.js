@@ -29,83 +29,21 @@ export const fetchStoresDb = async ({
 } = {}) => {
   try {
     // Input validation section
-    // Ensure mode is one of the allowed values
     if (!["unprocessed", "single", "all", "state"].includes(mode)) {
       throw new Error(`Invalid mode: ${mode}`);
     }
-
-    // For single store fetch, place_id is mandatory
     if (mode === "single" && !place_id) {
       throw new Error("place_id is required when mode is 'single'");
     }
-
-    // For state mode, states array is mandatory
     if (mode === "state" && !states) {
       throw new Error("states array is required when mode is 'state'");
     }
-
-    // If limit is provided, ensure it's a valid positive integer
     if (limit !== null && (limit <= 0 || !Number.isInteger(limit))) {
       throw new Error("limit must be a positive integer or null");
     }
 
-    let allData = []; // All fectched data for STATE mode
+    const BATCH_SIZE = 50;
 
-    if (mode === "state") {
-      // Process each state separately and handle pagination
-      for (const state of states) {
-        let hasMore = true;
-        let page = 0;
-        const PAGE_SIZE = 1000;
-
-        while (hasMore) {
-          let query = supabase
-            .from("stores")
-            .select(
-              "place_id, name, subtitle, description, categories, total_score, reviews, questions_and_answers, reviews_count"
-            )
-            .eq("state", state)
-            .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-          const { data, error } = await query;
-
-          if (error) {
-            throw new Error(
-              `Failed to fetch stores for state ${state}: ${error.message}`
-            );
-          }
-
-          if (!data || data.length === 0) {
-            hasMore = false;
-          } else {
-            allData = [...allData, ...data];
-            page++;
-
-            logger.info(`Fetched page ${page} for state ${state}`, {
-              filepath,
-              recordCount: data.length,
-              totalSoFar: allData.length,
-            });
-          }
-
-          // If a limit was specified and we've reached it, stop fetching
-          if (limit && allData.length >= limit) {
-            allData = allData.slice(0, limit);
-            hasMore = false;
-          }
-        }
-      }
-
-      logger.info(`Completed fetching all states`, {
-        filepath,
-        totalRecords: allData.length,
-        states: states,
-      });
-
-      return allData;
-    }
-
-    // Original logic for other modes
     let query = supabase
       .from("stores")
       .select(
@@ -115,62 +53,55 @@ export const fetchStoresDb = async ({
     // Apply mode-specific filters
     switch (mode) {
       case "unprocessed":
-        // Get only stores that haven't been processed by AI yet
         query = query.is("ai_summary", null);
         break;
       case "single":
-        // Get specific store by place_id
         query = query.eq("place_id", place_id);
         break;
-      case "all":
-        // No additional filters needed for 'all' mode
+      case "state":
+        query = query.in("state", states).is("ai_summary", null);
         break;
     }
 
-    // Apply limit if provided and not in single mode
-    // Single mode always returns one record, so limit is unnecessary
-    if (limit !== null && mode !== "single") {
-      query = query.limit(limit);
-    }
+    return {
+      fetchNextBatch: async (startIndex) => {
+        logger.info(`Fetching batch of stores`, {
+          filepath,
+          startIndex,
+          batchSize: BATCH_SIZE,
+          mode,
+          state: mode === "state" ? states.join(", ") : undefined,
+        });
 
-    // Execute the query
-    const { data, error } = await query;
+        const paginatedQuery = query
+          .range(startIndex, startIndex + BATCH_SIZE - 1)
+          .limit(limit ? Math.min(BATCH_SIZE, limit - startIndex) : BATCH_SIZE);
 
-    // Error handling for database operation failures
-    if (error) {
-      const enhancedError = new Error(
-        `Failed to fetch stores: ${error.message}`
-      );
-      enhancedError.originalError = error;
-      throw enhancedError;
-    }
+        const { data, error } = await paginatedQuery;
 
-    // Ensure we received data from the database
-    if (!data) {
-      throw new Error("No data returned from database");
-    }
+        if (error) throw error;
 
-    // Log successful operation with relevant details
-    logger.info(`Fetched stores successfully`, {
-      filepath,
-      mode,
-      count: data.length,
-      place_id: mode === "single" ? place_id : undefined, // Only include place_id for single mode
-      limit: mode !== "single" ? limit : undefined, // Only include limit for non-single modes
-      firstStore: data[0]?.place_id, // Log first store ID for debugging
-    });
+        const hasMore =
+          data?.length === BATCH_SIZE &&
+          (!limit || startIndex + BATCH_SIZE < limit);
 
-    return data;
+        logger.info(`Batch fetch complete`, {
+          filepath,
+          storesReturned: data?.length || 0,
+          hasMore,
+        });
+
+        return { stores: data || [], hasMore };
+      },
+      batchSize: BATCH_SIZE,
+    };
   } catch (error) {
-    // Comprehensive error logging for debugging
     logger.error("Failed to fetch stores:", {
       filepath,
       mode,
-      place_id: mode === "single" ? place_id : undefined,
       error: error.message,
       stack: error.stack,
     });
-    // Re-throw error for handling by caller
     throw error;
   }
 };

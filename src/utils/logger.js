@@ -30,29 +30,23 @@ const logger = winston.createLogger({
   handleExceptions: true,
   handleRejections: true,
   exitOnError: false,
-  // Increase buffer size and add flush interval
-  bufferMax: 1000,
-  flushInterval: 1000,
 
   level: process.env.LOG_LEVEL || "info",
   format: customFormat,
   transports: [
-    // Console Transport with synchronized writing
+    // Console Transport
     new winston.transports.Console({
       format: winston.format.combine(winston.format.colorize(), customFormat),
-      // Add these options
       eol: "\n",
       sync: true,
-      maxSize: "50m",
     }),
 
-    // File transports with proper stream handling
+    // File transports
     new winston.transports.File({
       filename: "logs/error.log",
       level: "error",
       maxsize: 5242880,
       maxFiles: 5,
-      // Add these options
       eol: "\n",
       tailable: true,
       zippedArchive: true,
@@ -63,14 +57,13 @@ const logger = winston.createLogger({
       filename: "logs/combined.log",
       maxsize: 5242880,
       maxFiles: 5,
-      // Add these options
       eol: "\n",
       tailable: true,
       zippedArchive: true,
       options: { flags: "a" },
     }),
   ],
-  maxListeners: 100,
+  maxListeners: 15,
 });
 
 // Add a flush handler for clean shutdown
