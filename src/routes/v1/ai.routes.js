@@ -40,7 +40,7 @@ const AI_PROCESSING_MODES = {
   STATE: {
     mode: "state",
     state: "Illinois",
-    limit: 5, // Optional limit
+    limit: null, // Optional limit
   },
 };
 
@@ -89,6 +89,12 @@ export async function runAIProcessing() {
         maxQAs: AI_CONFIG.MAX_QAS,
       })
     );
+
+    logger.info("Number of fetched stores:", {
+      filepath,
+      totalFetched: fetchedStores.length,
+    });
+
     // Clear fetchedStores as no longer needed
     fetchedStores.length = 0;
 
@@ -97,10 +103,6 @@ export async function runAIProcessing() {
       throw new Error("Store formatting failed");
     }
 
-    logger.info("Number of fetched stores:", {
-      filepath,
-      totalFetched: fetchedStores.length,
-    });
     logger.info("Number of formatted stores:", {
       filepath,
       totalFormatted: formattedStores.length,

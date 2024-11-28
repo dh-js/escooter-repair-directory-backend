@@ -68,7 +68,7 @@ export const fetchStoresDb = async ({
         query = query.eq("place_id", place_id);
         break;
       case "state":
-        query = query.eq("state", state).is("ai_summary", null); // Only get unprocessed stores from state
+        query = query.eq("state", state);
         break;
       case "all":
         // No additional filters needed for 'all' mode
