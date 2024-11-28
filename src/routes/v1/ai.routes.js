@@ -145,14 +145,16 @@ export async function runAIProcessing() {
               reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
             });
 
-            // logger.info(`Store Processing Skipped`, {
-            //   filepath,
-            //   section: "SKIP",
-            //   details: {
-            //     storeId: store.place_id,
-            //     reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
-            //   },
-            // });
+            logger.info(`Store Processing Skipped`, {
+              filepath,
+              section: "SKIPPED",
+              details: {
+                storeId: store.place_id,
+                name: store.name,
+                reviewCount: store.reviews_count,
+                required: 10,
+              },
+            });
 
             continue;
           }
