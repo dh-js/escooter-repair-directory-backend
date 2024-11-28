@@ -49,8 +49,63 @@ export const fetchStoresDb = async ({
       throw new Error("limit must be a positive integer or null");
     }
 
-    // Build the base query
-    // Select specific columns needed for AI processing
+    let allData = []; // All fectched data for STATE mode
+
+    if (mode === "state") {
+      // Process each state separately and handle pagination
+      for (const state of states) {
+        let hasMore = true;
+        let page = 0;
+        const PAGE_SIZE = 1000;
+
+        while (hasMore) {
+          let query = supabase
+            .from("stores")
+            .select(
+              "place_id, name, subtitle, description, categories, total_score, reviews, questions_and_answers, reviews_count"
+            )
+            .eq("state", state)
+            .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+          const { data, error } = await query;
+
+          if (error) {
+            throw new Error(
+              `Failed to fetch stores for state ${state}: ${error.message}`
+            );
+          }
+
+          if (!data || data.length === 0) {
+            hasMore = false;
+          } else {
+            allData = [...allData, ...data];
+            page++;
+
+            logger.info(`Fetched page ${page} for state ${state}`, {
+              filepath,
+              recordCount: data.length,
+              totalSoFar: allData.length,
+            });
+          }
+
+          // If a limit was specified and we've reached it, stop fetching
+          if (limit && allData.length >= limit) {
+            allData = allData.slice(0, limit);
+            hasMore = false;
+          }
+        }
+      }
+
+      logger.info(`Completed fetching all states`, {
+        filepath,
+        totalRecords: allData.length,
+        states: states,
+      });
+
+      return allData;
+    }
+
+    // Original logic for other modes
     let query = supabase
       .from("stores")
       .select(
@@ -66,10 +121,6 @@ export const fetchStoresDb = async ({
       case "single":
         // Get specific store by place_id
         query = query.eq("place_id", place_id);
-        break;
-      case "state":
-        // Support multiple states
-        query = query.in("state", states);
         break;
       case "all":
         // No additional filters needed for 'all' mode
