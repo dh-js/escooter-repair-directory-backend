@@ -39,20 +39,7 @@ const AI_PROCESSING_MODES = {
   },
   STATE: {
     mode: "state",
-    states: [
-      "Nebraska",
-      "Nevada",
-      "New Hampshire",
-      "New Jersey",
-      "New Mexico",
-      "New York",
-      "North Carolina",
-      "North Dakota",
-      "Ohio",
-      "Oklahoma",
-      "Oregon",
-      "Pennsylvania",
-    ], // Now accepts an array of states
+    states: ["Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico"], // Now accepts an array of states
     limit: null, // Optional limit
   },
 };
