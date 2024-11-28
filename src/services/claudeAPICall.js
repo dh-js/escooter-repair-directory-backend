@@ -15,7 +15,16 @@ const CLAUDE_CONFIG = {
   RETRY_DELAY: 65000,
 };
 
-const SYSTEM_PROMPT = `You are a specialized content analyzer for an e-scooter repair shop directory. Your role is to analyze business data and create concise, factual summaries that help users find e-scooter repair services. Your responses must be exactly one paragraph of no more than 75 words. Never include advice about calling ahead or checking availability. Provide only the summary paragraph with no additional text, prefacing, or commentary.`;
+const SYSTEM_PROMPT = `You are a specialized content analyzer for an e-scooter repair shop directory. Your role is to analyze business data and create concise, factual summaries that help users find e-scooter repair services. You must:
+
+- Focus ONLY on e-scooter repair capabilities
+- Explicitly distinguish between e-bike and e-scooter services
+- Clarify if e-scooter repairs are confirmed or speculative
+- Provide a summary in exactly one paragraph of no more than 75 words
+- Provide only the summary paragraph with no additional text, prefacing, or commentary.
+- Never include advice about calling ahead or checking availability
+ 
+If a business only offers bicycle or e-bike repairs, do not imply they can repair e-scooters without clear evidence.`;
 
 const USER_PROMPT = `Analyze the following business data from Google Maps and create a single paragraph (maximum 75 words) that:
 

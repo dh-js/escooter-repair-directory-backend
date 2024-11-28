@@ -15,7 +15,7 @@ const supabase = createClient(config.supabase.url, config.supabase.key);
  *   - 'all': All stores in the database
  *   - 'state': Stores in a specific state
  * @param {string} [options.place_id=null] - Specific store ID (required for 'single' mode)
- * @param {string} [options.state=null] - Specific state ID (required for 'state' mode)
+ * @param {string} [options.states=null] - Array of state IDs (required for 'state' mode)
  * @param {number|null} [options.limit=null] - Maximum number of stores to fetch
  *   - null means no limit will be applied
  *   - Ignored in 'single' mode
@@ -24,7 +24,7 @@ const supabase = createClient(config.supabase.url, config.supabase.key);
 export const fetchStoresDb = async ({
   mode = "unprocessed",
   place_id = null,
-  state = null,
+  states = null,
   limit = null,
 } = {}) => {
   try {
@@ -39,9 +39,9 @@ export const fetchStoresDb = async ({
       throw new Error("place_id is required when mode is 'single'");
     }
 
-    // For state mode, state is mandatory
-    if (mode === "state" && !state) {
-      throw new Error("state is required when mode is 'state'");
+    // For state mode, states array is mandatory
+    if (mode === "state" && !states) {
+      throw new Error("states array is required when mode is 'state'");
     }
 
     // If limit is provided, ensure it's a valid positive integer
@@ -68,7 +68,8 @@ export const fetchStoresDb = async ({
         query = query.eq("place_id", place_id);
         break;
       case "state":
-        query = query.eq("state", state);
+        // Support multiple states
+        query = query.in("state", states);
         break;
       case "all":
         // No additional filters needed for 'all' mode

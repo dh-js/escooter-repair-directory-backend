@@ -39,7 +39,7 @@ const AI_PROCESSING_MODES = {
   },
   STATE: {
     mode: "state",
-    state: "Illinois",
+    states: ["Illinois"], // Now accepts an array of states
     limit: null, // Optional limit
   },
 };
@@ -133,19 +133,6 @@ export async function runAIProcessing() {
           section: "START",
         });
 
-        // Review count check logging
-        logger.info(`Review Count Check`, {
-          filepath,
-          place_id: store.place_id,
-          section: "REVIEWS",
-          details: {
-            name: store.name,
-            reviews_count: store.reviews_count,
-            skipThreshold: 10,
-            willSkip: store.reviews_count < 10,
-          },
-        });
-
         // Check if store has sufficient reviews
         if (store.reviews_count < 10) {
           processedStores.push({
@@ -161,14 +148,14 @@ export async function runAIProcessing() {
             reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
           });
 
-          logger.info(`Store Processing Skipped`, {
-            filepath,
-            section: "SKIP",
-            details: {
-              storeId: store.place_id,
-              reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
-            },
-          });
+          // logger.info(`Store Processing Skipped`, {
+          //   filepath,
+          //   section: "SKIP",
+          //   details: {
+          //     storeId: store.place_id,
+          //     reason: `Insufficient reviews (${store.reviews_count}/10 required)`,
+          //   },
+          // });
 
           logger.info(`${"=".repeat(80)}\n`, {
             filepath,
