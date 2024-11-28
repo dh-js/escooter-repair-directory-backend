@@ -39,7 +39,17 @@ const AI_PROCESSING_MODES = {
   },
   STATE: {
     mode: "state",
-    states: ["Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico"], // Now accepts an array of states
+    states: [
+      "New York",
+      "North Carolina",
+      "North Dakota",
+      "Ohio",
+      "Oklahoma",
+      "Oregon",
+      "Pennsylvania",
+      "Rhode Island",
+      "South Carolina",
+    ], // Accepts an array of states
     limit: null, // Optional limit
   },
 };
@@ -111,16 +121,16 @@ export async function runAIProcessing() {
     processingDetails.totalStores = formattedStores.length;
 
     // After formatting stores
-    logger.info("Store details before processing:", {
-      filepath,
-      stores: formattedStores.map((store) => ({
-        place_id: store.place_id,
-        name: store.name,
-        reviews_count: store.reviews_count,
-        hasReviewsCount: "reviews_count" in store,
-        rawReviewsCount: store.reviews?.length || 0,
-      })),
-    });
+    // logger.info("Store details before processing:", {
+    //   filepath,
+    //   stores: formattedStores.map((store) => ({
+    //     place_id: store.place_id,
+    //     name: store.name,
+    //     reviews_count: store.reviews_count,
+    //     hasReviewsCount: "reviews_count" in store,
+    //     rawReviewsCount: store.reviews?.length || 0,
+    //   })),
+    // });
 
     // Process stores and track results
     const processedStores = [];
@@ -298,7 +308,7 @@ export async function runAIProcessing() {
             100
           ).toFixed(1)}%`,
         },
-        skippedStores: processingDetails.skippedStores,
+        skippedStoresCount: processingDetails.skippedStores.length,
         failedStores: processingDetails.failedStores.map((store) => ({
           id: store.place_id,
           error: store.error,
