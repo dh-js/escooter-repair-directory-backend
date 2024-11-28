@@ -40,15 +40,19 @@ const AI_PROCESSING_MODES = {
   STATE: {
     mode: "state",
     states: [
-      "New York",
-      "North Carolina",
-      "North Dakota",
-      "Ohio",
-      "Oklahoma",
-      "Oregon",
-      "Pennsylvania",
-      "Rhode Island",
-      "South Carolina",
+      "South Dakota",
+      "Tennessee",
+      "Texas",
+      "Utah",
+      "Vermont",
+      "Virginia",
+      "Washington",
+      "West Virginia",
+      "Wisconsin",
+      "Wyoming",
+      "Alabama",
+      "Alaska",
+      "Arizona",
     ], // Accepts an array of states
     limit: null, // Optional limit
   },
