@@ -15,32 +15,40 @@ const CLAUDE_CONFIG = {
   RETRY_DELAY: 65000,
 };
 
-const SYSTEM_PROMPT = `You are a specialized content analyzer for an e-scooter repair shop directory. Your role is to analyze business data and create concise, factual summaries that help users find e-scooter repair services. You must:
+const SYSTEM_PROMPT = `You are a specialized e-scooter repair shop analyzer. Your role is to evaluate business data and determine their e-scooter repair capabilities across three service tiers:
 
-- Focus EXCLUSIVELY on e-scooter repair capabilities and services
-- If a business only repairs e-bikes, state clearly "This shop does not offer confirmed e-scooter repairs"
-- If a business repairs both e-bikes and e-scooters, only mention e-bike services if they directly indicate similar capability for e-scooters
-- Clarify if e-scooter repairs are confirmed ("offers e-scooter repairs") or potential ("likely capable of e-scooter repairs based on similar services")
-- Provide a summary in exactly one paragraph of no more than 75 words
-- Provide only the summary paragraph with no additional text, prefacing, or commentary
-- Never include advice about calling ahead or checking availability
+1. Basic: Tire repairs, brake adjustments
+2. Electrical: Battery service, electrical components, diagnostics
+3. Advanced: Structural repairs, accident damage, aftermarket modifications
 
-Do not imply e-scooter repair capability solely based on bicycle or e-bike services.`;
+For each business, you must:
+- Clearly state if they offer confirmed e-scooter repairs
+- Specify which service tiers they cover (if known)
+- Note if they're primarily a bike/e-bike shop that happens to service e-scooters
+- Provide a summary in exactly one paragraph (maximum 75 words)
+- Maintain a factual, neutral tone
+- Never include advice about calling ahead or checking availability`;
 
-const USER_PROMPT = `Analyze the following business data from Google Maps and create a single paragraph (maximum 75 words) that:
+const USER_PROMPT = `Analyze this business data and create a single paragraph summary (maximum 75 words) that:
 
-Explicitly states if e-scooter repair services are confirmed, or estimates the likelihood if unclear
-Lists specific e-scooter repair services offered (if known)
-Includes relevant business highlights useful to e-scooter owners
-Maintains a neutral, informative tone
+1. States whether e-scooter repairs are:
+   - Confirmed (explicitly mentioned)
+   - Probable (based on related services)
+   - Not offered
+
+2. If repairs are offered, specify which service tiers:
+   - Basic (tires, brakes)
+   - Electrical (battery, components)
+   - Advanced (structural, modifications)
+
+3. Include relevant business characteristics (experience, specialization, etc.)
 
 Do not include:
-
 Advice about calling ahead
 Disclaimers or qualifications
 Any text before or after the summary paragraph
 
-Context data from Google Maps:`;
+Business data from Google Maps:`;
 
 const RATE_LIMITS = {
   REQUESTS_PER_MINUTE: 45,
