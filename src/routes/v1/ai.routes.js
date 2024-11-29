@@ -39,7 +39,7 @@ const AI_PROCESSING_MODES = {
   },
   STATE: {
     mode: "state",
-    states: ["Arkansas", "Colorado", "Connecticut", "Delaware"], // Accepts an array of states
+    states: ["California"], // Accepts an array of states
     limit: null, // Optional limit
   },
 };
