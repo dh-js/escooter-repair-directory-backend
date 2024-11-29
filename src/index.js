@@ -53,11 +53,14 @@ const allowedOrigins = [
   ...(process.env.NODE_ENV === "development" ? ["http://localhost:3000"] : []),
 ];
 
+// Toggle this to temporarily allow no-origin requests in production
+const ALLOW_NO_ORIGIN = true;
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin in development mode
-      if (process.env.NODE_ENV === "development") {
+      // Allow requests with no origin in development mode or when ALLOW_NO_ORIGIN is true
+      if (process.env.NODE_ENV === "development" || ALLOW_NO_ORIGIN) {
         return callback(null, true);
       }
 
