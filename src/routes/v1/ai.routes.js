@@ -27,7 +27,7 @@ const router = Router();
 const AI_PROCESSING_MODES = {
   UNPROCESSED: {
     mode: "unprocessed",
-    limit: 5, // null = no limit
+    limit: null, // null = no limit
   },
   SINGLE: {
     mode: "single",
@@ -72,16 +72,11 @@ export async function runAIProcessing() {
   try {
     logger.info("Starting AI processing job...", {
       filepath,
-      mode: AI_PROCESSING_MODES.STATE,
-    });
-
-    logger.info("Processing stores for states:", {
-      filepath,
-      states: AI_PROCESSING_MODES.STATE.states,
+      mode: AI_PROCESSING_MODES.UNPROCESSED,
     });
 
     // Get paginated store fetcher
-    const storeFetcher = await fetchStoresDb(AI_PROCESSING_MODES.STATE);
+    const storeFetcher = await fetchStoresDb(AI_PROCESSING_MODES.UNPROCESSED);
     let currentBatchIndex = 0;
     let hasMoreStores = true;
 
