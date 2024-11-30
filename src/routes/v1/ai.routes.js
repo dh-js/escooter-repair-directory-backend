@@ -122,6 +122,7 @@ export async function runAIProcessing() {
           logger.info(`Processing Store: ${store.name}`, {
             filepath,
             place_id: store.place_id,
+            state: store.state || "null",
             section: "START",
           });
 
@@ -146,6 +147,7 @@ export async function runAIProcessing() {
               details: {
                 storeId: store.place_id,
                 name: store.name,
+                state: store.state || "null",
                 reviewCount: store.reviews_count,
                 required: 10,
               },
