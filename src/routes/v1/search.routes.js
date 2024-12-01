@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 
     // Validate radius
     const parsedRadius = Number(radius);
-    if (isNaN(parsedRadius) || parsedRadius <= 0 || parsedRadius > 150) {
+    if (isNaN(parsedRadius) || parsedRadius < 1 || parsedRadius > 150) {
       logger.warn("Invalid radius parameter", {
         filepath,
         params: { zipCode, radius: radius },
@@ -59,7 +59,7 @@ router.get("/", async (req, res) => {
     logger.error("Search request failed:", error, { filepath });
 
     if (
-      error.message === "ZIP code must be a number between 3-5 digits" ||
+      error.message === "ZIP code must be exactly 5 digits" ||
       error.message === "ZIP code not found"
     ) {
       return res.status(400).json({ error: error.message });

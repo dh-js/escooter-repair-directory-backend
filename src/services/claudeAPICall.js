@@ -43,8 +43,8 @@ Any text before or after the summary paragraph
 Context data from Google Maps:`;
 
 const RATE_LIMITS = {
-  REQUESTS_PER_MINUTE: 45,
-  TOKENS_PER_MINUTE: 35000, // minus 5000 for buffer
+  REQUESTS_PER_MINUTE: 1000,
+  TOKENS_PER_MINUTE: 75000, // minus 5000 for buffer
 };
 
 let requestsThisMinute = 0;
