@@ -54,7 +54,7 @@ const allowedOrigins = [
 ];
 
 // Toggle this to temporarily allow no-origin requests in production
-const ALLOW_NO_ORIGIN = true;
+const ALLOW_NO_ORIGIN = false;
 
 app.use(
   cors({
